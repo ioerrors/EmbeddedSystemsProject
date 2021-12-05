@@ -26,11 +26,8 @@ const byte RESET_TAMPER_FLAG = 8;
 const byte RECALIBRATE = 9; //should also reset tamper flag
 
 
-// tamper flag
-volatile bool tamper;
 
-// Door or PIR or Either triggers other sensor reports
-volatile byte select = 0; //default is select = door
+
 
 
 struct AccelerometerBounds{
@@ -50,14 +47,20 @@ const byte ECHO_PIN = 5;
 const byte DOOR_PIN = 4;
 const byte DISTANCE_THRESHOLD_CM = 200;
 const short ACCELEROMETER_IDENTIFIER = 54321;
-const short CALIBRATION_TIME_MS = 4000;
+//const short CALIBRATION_TIME_MS = 4000; !!! Not needed?
 const float accelOffset = 0.4;
+
 //Non-const values
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(ACCELEROMETER_IDENTIFIER);
 long unsigned int pause = 5000;
 volatile boolean stateMagDoor; // 0  close / 1 open
 volatile boolean statePIRSensor;
-bool tampered;
+
+// tamper flag
+volatile bool tampered;
+// Door or PIR or Either triggers other sensor reports
+volatile byte select = 0; //default is select = door
+
 bool checkTamper;
 AccelerometerBounds accelBounds;
 unsigned long startTime;
@@ -78,7 +81,7 @@ void setup() {
   accel.setMode(LSM303_MODE_NORMAL);
   lsm303_accel_mode_t new_mode = accel.getMode();
 
-  tampered = false;
+
   calibrateAccelerometer();
   checkTamper = true;
   //Set pin modes
@@ -87,11 +90,12 @@ void setup() {
   pinMode(ECHO_PIN, INPUT);   
   pinMode(PIR_PIN, INPUT);
 
-  tamper = false;
-
+  tampered = false;
   //Set start time
   startTime = millis();
 }
+
+//!! I like this
 void calibrateAccelerometer(){
   sensors_vec_t accelerometerData = getAccelerometerData();
   accelBounds.xMin = accelerometerData.x - accelOffset;
@@ -154,13 +158,13 @@ void loop() {
 
     // reset tamper flag
     if(value == RESET_TAMPER_FLAG) {
-      tamper = false;
+      tampered = false;
     }
 
     // recalibrate tamper boundaries
     if(value == RECALIBRATE) {
-      tamper = false;
-      // ! ! ! recalibarte tamper boundaries
+      tampered = false;
+      calibrateAccelerometer();
     }
 
     // --------------------------------------------
