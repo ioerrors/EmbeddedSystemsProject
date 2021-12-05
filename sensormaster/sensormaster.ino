@@ -77,7 +77,6 @@ void setup() {
   accel.setMode(LSM303_MODE_NORMAL);
   lsm303_accel_mode_t new_mode = accel.getMode();
 
-
   calibrateAccelerometer();
   checkTamper = true;
   //Set pin modes
@@ -93,7 +92,6 @@ void setup() {
   startTime = millis();
 }
 
-//!! I like this
 void calibrateAccelerometer(){
   sensors_vec_t accelerometerData = getAccelerometerData();
   accelBounds.xMin = accelerometerData.x - accelOffset;
