@@ -112,7 +112,7 @@ void loop() {
     // recalibrate tamper boundaries
     if(value == RECALIBRATE) {
       tamper = false;
-      // recalibarte tamper boundaries
+      // ! ! ! recalibarte tamper boundaries
     }
 
     // --------------------------------------------
