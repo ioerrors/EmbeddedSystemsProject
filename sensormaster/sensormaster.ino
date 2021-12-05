@@ -19,8 +19,8 @@ typedef union {
 
 //const command values
 const byte FETCH_DATA_COMMAND = 17;
-const byte SELECT_IS_PIR = 1;
 const byte SELECT_IS_DOOR = 0;
+const byte SELECT_IS_PIR = 1;
 const byte SELECT_IS_EITHER = 2;
 const byte RESET_TAMPER_FLAG = 8;
 const byte RECALIBRATE = 9; //should also reset tamper flag
@@ -43,7 +43,6 @@ const byte ECHO_PIN = 5;
 const byte DOOR_PIN = 4;
 const byte DISTANCE_THRESHOLD_CM = 200;
 const short ACCELEROMETER_IDENTIFIER = 54321;
-//const short CALIBRATION_TIME_MS = 4000; !!! Not needed?
 const float accelOffset = 0.4;
 
 //Non-const values
