@@ -85,6 +85,7 @@ void loop() {
       free(packet);
       packet = NULL;
     }
+
     // --------------------------------------------
     // periodic packet creation
     // & system's behavior meaningfully changes 
@@ -101,35 +102,50 @@ void loop() {
       // if select does detect entrance event
       //  proceed with if statements acording to meaning
       // ------------------------------------------------
-      
+
+      // sets stateMagDoor // 0  close / 1 open
+      // sets statePIRSensor
+      byte booleanByte = calculateBooleanByte();
+
       // if door is select
       if (select == 0) {
-          if doorOpen {
-            create & write packet
+          if (stateMagDoor == true) { // door is open
+              byte* packet = createPacket();
+              Serial1.write(packet, PACKET_SIZE);
+              free(packet);
+              packet = NULL;
           }
-          else {
-            write door closed;
+          else { // transmits just PIR and DOOR data
+              Serial1.write(booleanByte, sizeof(byte));
           }
       }
 
       // if selectorState == PIR    
       if (select == 1) {
-      //  if PIR:
-      //    create packet
-      //  else:
-      //    write !PIR
+          if (statePIRSensor == true) { // motion detected
+              byte* packet = createPacket();
+              Serial1.write(packet, PACKET_SIZE);
+              free(packet);
+              packet = NULL;
+          }
+          else { // transmits just PIR and DOOR data
+              Serial1.write(booleanByte, sizeof(byte));
+          }
       }
 
-      // if select is both
+      // if select is either
       if (select == 2) {
-
+        if (statePIRSensor == true  // motion detected
+            || stateMagDoor == true) { // door open
+            byte* packet = createPacket();
+            Serial1.write(packet, PACKET_SIZE);
+            free(packet);
+            packet = NULL;
+        }
+        else { // transmits just PIR and DOOR data
+            Serial1.write(booleanByte, sizeof(byte));
+        }
       }
-
-      
-      byte* packet = createPacket();
-      Serial1.write(packet, PACKET_SIZE);
-      free(packet);
-      packet = NULL;
       startTime = millis();
     }
 
