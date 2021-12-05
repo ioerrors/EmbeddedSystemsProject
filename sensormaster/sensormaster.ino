@@ -22,6 +22,7 @@ const byte FETCH_DATA_COMMAND = 17;
 const byte SELECT_IS_DOOR = 0;
 const byte SELECT_IS_PIR = 1;
 const byte SELECT_IS_EITHER = 2;
+const byte IGNORE_TAMPER_FLAG = 7;
 const byte RESET_TAMPER_FLAG = 8;
 const byte RECALIBRATE = 9; //should also reset tamper flag
 
@@ -45,6 +46,7 @@ const float accelOffset = 0.4;
 
 //Non-const values
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(ACCELEROMETER_IDENTIFIER);
+AccelerometerBounds accelBounds;
 
 unsigned short PERIODIC_LENGTH = 1000; // 1 Hz
 boolean stateMagDoor; // 0  close / 1 open
@@ -56,7 +58,7 @@ bool tampered;
 byte select = 0; //default is select = door
 
 bool checkTamper;
-AccelerometerBounds accelBounds;
+
 unsigned long startTime;
 
 void setup() {
@@ -151,6 +153,10 @@ void loop() {
       select = value;
     }
 
+    // Ignore tamper flag
+    if(value == IGNORE_TAMPER_FLAG) {
+      checkTamper = false;
+    }
 
     // reset tamper flag
     if(value == RESET_TAMPER_FLAG) {
