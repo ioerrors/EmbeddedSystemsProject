@@ -126,6 +126,14 @@ void loop() {
     // take in command
     int value = Serial1.read();
 
+    // ON DEMAND data collection & packet creation
+    if(value == FETCH_DATA_COMMAND){
+      byte* packet = createPacket();
+      Serial1.write(packet, PACKET_SIZE);
+      free(packet);
+      packet = NULL;
+    }
+
     // SET PERIODIC REPORT:
     if (value >= 100 && value <= 1000) {
       PERIODIC_LENGTH = value;
@@ -134,14 +142,6 @@ void loop() {
     // TURN OFF Periodic REPORT:
     if (value < 0) {
       PERIODIC_LENGTH = -1; //turn off periodic reports
-    }
-
-    // ON DEMAND data collection & packet creation
-    if(value == FETCH_DATA_COMMAND){
-      byte* packet = createPacket();
-      Serial1.write(packet, PACKET_SIZE);
-      free(packet);
-      packet = NULL;
     }
 
     // change select sensor
@@ -164,12 +164,14 @@ void loop() {
     }
 
     // --------------------------------------------
-    // periodic packet creation
+    // PERIODIC REPORT:
     // & system's behavior meaningfully changes 
     // according to the collected sensor data
     else if (millis() - startTime > PERIODIC_LENGTH 
           && PERIODIC_LENGTH >= 100) {
+
       // ------------------------------------------------
+      // MEANINGFUL USE OF SENSOR DATA:
       // What is select?
       // select is a byte indicating which sensor 
       // between the PIR and Door turn on 
@@ -178,11 +180,10 @@ void loop() {
       // returns just select value
       
       // if select does detect entrance event
-      //  proceed with if statements acording to meaning
+      //  other sensors are turned on to report to end user
       // ------------------------------------------------
       
-      // sets stateMagDoor // 0  close / 1 open
-      // sets statePIRSensor
+      // sets stateMagDoor & statePIRSensor
       byte booleanByte = calculateBooleanByte();
 
       // if select = door
