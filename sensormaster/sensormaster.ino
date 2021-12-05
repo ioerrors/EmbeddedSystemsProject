@@ -35,26 +35,25 @@ struct AccelerometerBounds{
   float zMax;
 };
 
-const short PERIODIC_LENGTH = 1000; // 1 Hz
-const byte PACKET_SIZE = 3*sizeof(float) + sizeof(short) + sizeof(byte);
+const byte PACKET_SIZE = 3*sizeof(float) + sizeof(short) + sizeof(byte); ///!!!
 const byte PIR_PIN = 7;
 const byte TRIG_PIN = 6;
 const byte ECHO_PIN = 5;
 const byte DOOR_PIN = 4;
-const byte DISTANCE_THRESHOLD_CM = 200;
 const short ACCELEROMETER_IDENTIFIER = 54321;
 const float accelOffset = 0.4;
 
 //Non-const values
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(ACCELEROMETER_IDENTIFIER);
-long unsigned int pause = 5000;
-volatile boolean stateMagDoor; // 0  close / 1 open
-volatile boolean statePIRSensor;
+
+short PERIODIC_LENGTH = 1000; // 1 Hz
+boolean stateMagDoor; // 0  close / 1 open
+boolean statePIRSensor;
 
 // tamper flag
-volatile bool tampered;
+bool tampered;
 // Door or PIR or Either triggers other sensor reports
-volatile byte select = 0; //default is select = door
+byte select = 0; //default is select = door
 
 bool checkTamper;
 AccelerometerBounds accelBounds;
@@ -133,8 +132,8 @@ void loop() {
       packet = NULL;
     }
 
-    // SET PERIODIC REPORT INTERVAL:
-    if (value >= 100 && value <= 1000) {
+    // SET PERIODIC REPORT INTERVAL: //0.1 Hz to 10 Hz
+    if (value >= 100 && value <= 10000) {
       PERIODIC_LENGTH = value;
     }
 
