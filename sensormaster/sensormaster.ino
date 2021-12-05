@@ -19,10 +19,8 @@ typedef union {
 
 //const values
 const byte FETCH_DATA_COMMAND = 17;
-// const byte SELECT_IS_PIRNOW = 5;
+// const byte SELECT_IS_PIR = 5;
 // const byte SELECT_IS_DOOR = 4;
-// const byte SELECT_IS_BOTH = 6;
-// const byte SELECT_IS_EITHER = 7;
 // const byte RESET_TAMPER_FLAG = 8;
 // const byte RECALIBRATE = 9; //should also reset tamper flag
 // volatile bool tamper;
