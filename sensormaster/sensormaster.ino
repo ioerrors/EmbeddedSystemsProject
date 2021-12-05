@@ -74,7 +74,7 @@ void setup() {
   
   //Initialize accelerometer
   if (!accel.begin()) {
-    Serial.println("Ooops, no LSM303 detected ... Check your wiring!"); 
+    Serial.println("Oops, no LSM303 detected ... Check your wiring!"); 
   }
   accel.setRange(LSM303_RANGE_4G);
   lsm303_accel_range_t new_range = accel.getRange();
