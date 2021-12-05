@@ -134,7 +134,7 @@ void loop() {
       packet = NULL;
     }
 
-    // SET PERIODIC REPORT:
+    // SET PERIODIC REPORT INTERVAL:
     if (value >= 100 && value <= 1000) {
       PERIODIC_LENGTH = value;
     }
@@ -280,6 +280,8 @@ sensors_vec_t getAccelerometerData(){
     accel.getEvent(&event);
     return event.acceleration;
 }
+
+
 //calculates the byte value corresponding to the tracked booleans
 //Currently, this is the PIR sensor and the door sensor
 //from least significant bit to most, the values are order as:
