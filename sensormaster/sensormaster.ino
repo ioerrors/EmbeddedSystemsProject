@@ -19,14 +19,14 @@ typedef union {
 
 //const values
 const byte FETCH_DATA_COMMAND = 17;
-// const byte SELECT_IS_PIR = 5;
-// const byte SELECT_IS_DOOR = 4;
-// const byte RESET_TAMPER_FLAG = 8;
-// const byte RECALIBRATE = 9; //should also reset tamper flag
-// volatile bool tamper;
+const byte SELECT_IS_PIR = 1;
+const byte SELECT_IS_DOOR = 0;
+const byte SELECT_IS_EITHER = 2;
+const byte RESET_TAMPER_FLAG = 8;
+const byte RECALIBRATE = 9; //should also reset tamper flag
 
-
-volatile byte selectorByte = 0;
+volatile bool tamper;
+volatile byte select = 0; //default is select = door
 const short PERIODIC_LENGTH = 3000;
 const byte PACKET_SIZE = 3*sizeof(float) + sizeof(short) + sizeof(byte);
 const byte PIR_PIN = 7;
@@ -91,49 +91,41 @@ void loop() {
     // according to the collected sensor data
     else if (millis() - startTime > PERIODIC_LENGTH) {
       // ------------------------------------------------
-      // What is selectorState? -->
+      // What is select?
+      // select is a byte indicating which sensor 
+      // between the PIR and Door turn on 
+      // other sensor sampling.
+      // if select senses no entrance event,
+      // returns just select value
       
-      // if selectorState is a function pointer, 
-      //  is set to which function pointer
-      //  of possible trigger functions: PIR, Door, Both, or Either:
-      //    both or either will just be functions containing 
-      //    boolean logic calling both of door/pir functions
-      //  trigger selected based on command data stored in int value
-      //  possible command data: and int value defined
-      //  for each of 4 possible type of trigger: either/both/PIR/Door
-      //    selects which sensor we care about 
-      //    to turn on other data collection sensors
-      //  so no if/else statements
-      //  to collect the true or false value
-      
-      // if selector is a volatile bool/int
+      // if select does detect entrance event
       //  proceed with if statements acording to meaning
       // ------------------------------------------------
+      
+      // if door is select
+      if (select == 0) {
+          if doorOpen {
+            create & write packet
+          }
+          else {
+            write door closed;
+          }
+      }
 
-      // if door open is selectorState
-      //  if doorOpen:
-      //    create & write packet
-      //   else:
-      //    write door closed;
-
-      // if selectorState == PIR
+      // if selectorState == PIR    
+      if (select == 1) {
       //  if PIR:
       //    create packet
       //  else:
       //    write !PIR
-      // if selectorState == either && if either:
-      //    create packet
-      // else if !either:
+      }
 
+      // if select is both
+      if (select == 2) {
 
-      // if selectorState == both && if both:
-      // create packet
-      // else if !both:
-      // send small both closed/no light packet
+      }
 
-      // else !either:
-      // .
-
+      
       byte* packet = createPacket();
       Serial1.write(packet, PACKET_SIZE);
       free(packet);
