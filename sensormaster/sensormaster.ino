@@ -46,7 +46,7 @@ const float accelOffset = 0.4;
 //Non-const values
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(ACCELEROMETER_IDENTIFIER);
 
-short PERIODIC_LENGTH = 1000; // 1 Hz
+unsigned short PERIODIC_LENGTH = 1000; // 1 Hz
 boolean stateMagDoor; // 0  close / 1 open
 boolean statePIRSensor;
 
@@ -139,7 +139,7 @@ void loop() {
 
     // TURN OFF Periodic REPORT:
     if (value < 0) {
-      PERIODIC_LENGTH = -1; //turn off periodic reports
+      PERIODIC_LENGTH = 0; //turn off periodic reports
     }
 
     // change select sensor
