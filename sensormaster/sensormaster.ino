@@ -107,7 +107,7 @@ void loop() {
       // sets statePIRSensor
       byte booleanByte = calculateBooleanByte();
 
-      // if door is select
+      // if select = door
       if (select == 0) {
           if (stateMagDoor == true) { // door is open
               byte* packet = createPacket();
@@ -120,7 +120,7 @@ void loop() {
           }
       }
 
-      // if selectorState == PIR    
+      // if select == PIR    
       if (select == 1) {
           if (statePIRSensor == true) { // motion detected
               byte* packet = createPacket();
