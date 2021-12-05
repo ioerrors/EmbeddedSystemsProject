@@ -26,10 +26,6 @@ const byte RESET_TAMPER_FLAG = 8;
 const byte RECALIBRATE = 9; //should also reset tamper flag
 
 
-
-
-
-
 struct AccelerometerBounds{
   float xMin;
   float xMax;
@@ -235,11 +231,11 @@ void loop() {
   }
 }
 
-
+/*
 void checkAccelerometerStatus(){
-  
+ // !! Not needed? 
 }
-
+*/
 
 byte* createPacket(){
     sensors_vec_t event = getAccelerometerData();
