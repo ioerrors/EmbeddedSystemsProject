@@ -42,7 +42,7 @@ struct AccelerometerBounds{
   float zMax;
 };
 
-const short PERIODIC_LENGTH = 3000;
+const short PERIODIC_LENGTH = 1000; // 1 Hz
 const byte PACKET_SIZE = 3*sizeof(float) + sizeof(short) + sizeof(byte);
 const byte PIR_PIN = 7;
 const byte TRIG_PIN = 6;
@@ -101,6 +101,7 @@ void calibrateAccelerometer(){
   accelBounds.zMin = accelerometerData.z - accelOffset;
   accelBounds.zMax = accelerometerData.z + accelOffset;
 }
+
 void checkAccelerometer(){
   sensors_vec_t accelData = getAccelerometerData();
   bool movedXPos = (accelBounds.xMax < accelData.x);
