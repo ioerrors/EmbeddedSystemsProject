@@ -17,7 +17,7 @@ typedef union {
   byte bytes[sizeof(short)];
 }shortBytes;
 
-//const values
+//const command values
 const byte FETCH_DATA_COMMAND = 17;
 const byte SELECT_IS_PIR = 1;
 const byte SELECT_IS_DOOR = 0;
@@ -25,8 +25,14 @@ const byte SELECT_IS_EITHER = 2;
 const byte RESET_TAMPER_FLAG = 8;
 const byte RECALIBRATE = 9; //should also reset tamper flag
 
+
+// tamper flag
 volatile bool tamper;
+
+// Door or PIR or Either triggers other sensor reports
 volatile byte select = 0; //default is select = door
+
+
 const short PERIODIC_LENGTH = 3000;
 const byte PACKET_SIZE = 3*sizeof(float) + sizeof(short) + sizeof(byte);
 const byte PIR_PIN = 7;
@@ -66,7 +72,7 @@ void setup() {
   pinMode(ECHO_PIN, INPUT);
   pinMode(PIR_PIN, INPUT);
 
-  // tamper = false;
+  tamper = false;
 
   //Set start time
   startTime = millis();
@@ -77,13 +83,36 @@ void loop() {
   if(Serial1.available()){
 
     // --------------------------------------------
-    // on demand data collection & packet creation
+    // command responses:
+
+    // take in command
     int value = Serial1.read();
+
+    // ON DEMAND data collection & packet creation
     if(value == FETCH_DATA_COMMAND){
       byte* packet = createPacket();
       Serial1.write(packet, PACKET_SIZE);
       free(packet);
       packet = NULL;
+    }
+
+    // change select sensor
+    if(value == SELECT_IS_DOOR
+    || value == SELECT_IS_PIR
+    || value == SELECT_IS_EITHER) {
+      select = value;
+    }
+
+
+    // reset tamper flag
+    if(value == RESET_TAMPER_FLAG) {
+      tamper = false;
+    }
+
+    // recalibrate tamper boundaries
+    if(value == RECALIBRATE) {
+      tamper = false;
+      // recalibarte tamper boundaries
     }
 
     // --------------------------------------------
