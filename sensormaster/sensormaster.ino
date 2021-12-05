@@ -19,9 +19,9 @@ typedef union {
 
 //const command values
 const byte FETCH_DATA_COMMAND = 17;
-const byte SELECT_IS_DOOR = 0;
-const byte SELECT_IS_PIR = 1;
-const byte SELECT_IS_EITHER = 2;
+const byte SELECT_IS_DOOR = 1;
+const byte SELECT_IS_PIR = 2;
+const byte SELECT_IS_EITHER = 3;
 const byte IGNORE_TAMPER_FLAG = 7;
 const byte RESET_TAMPER_FLAG = 8;
 const byte RECALIBRATE = 9; //should also reset tamper flag
@@ -123,6 +123,7 @@ void loop() {
     if(checkTamper){
       checkAccelerometer();
     }
+
     // take in command
     int value = Serial1.read();
 
@@ -140,7 +141,7 @@ void loop() {
     }
 
     // TURN OFF Periodic REPORT:
-    if (value < 0) {
+    if (value == 0) {
       PERIODIC_LENGTH = 0; //turn off periodic reports
     }
 
@@ -190,8 +191,8 @@ void loop() {
       // sets stateMagDoor & statePIRSensor
       byte booleanByte = calculateBooleanByte();
 
-      // if select = door
-      if (select == 0) {
+      // if select == door
+      if (select == 1) {
           if (stateMagDoor == true) { // door is open
               byte* packet = createPacket();
               Serial1.write(packet, PACKET_SIZE);
@@ -199,12 +200,12 @@ void loop() {
               packet = NULL;
           }
           else { // transmits just PIR and DOOR data
-              Serial1.write(booleanByte, sizeof(byte));
+              Serial1.write(booleanByte, sizeof(byte)); //!!
           }
       }
 
       // if select == PIR    
-      if (select == 1) {
+      if (select == 2) {
           if (statePIRSensor == true) { // motion detected
               byte* packet = createPacket();
               Serial1.write(packet, PACKET_SIZE);
@@ -212,12 +213,12 @@ void loop() {
               packet = NULL;
           }
           else { // transmits just PIR and DOOR data
-              Serial1.write(booleanByte, sizeof(byte));
+              Serial1.write(booleanByte, sizeof(byte)); //!!
           }
       }
 
       // if select is either
-      if (select == 2) {
+      if (select == 3) {
         if (statePIRSensor == true  // motion detected
             || stateMagDoor == true) { // door open
             byte* packet = createPacket();
@@ -226,21 +227,13 @@ void loop() {
             packet = NULL;
         }
         else { // transmits just PIR and DOOR data
-            Serial1.write(booleanByte, sizeof(byte));
+            Serial1.write(booleanByte, sizeof(byte)); //!!
         }
       }
-      //packet = NULL;
-      Serial.println(tampered);
       startTime = millis();
     }
   }
 }
-
-/*
-void checkAccelerometerStatus(){
- // !! Not needed? 
-}
-*/
 
 byte* createPacket(){
     sensors_vec_t event = getAccelerometerData();
@@ -292,17 +285,16 @@ sensors_vec_t getAccelerometerData(){
 //door sensor, PIR sensor
 byte calculateBooleanByte()
 {
-  noInterrupts();
   stateMagDoor = digitalRead(DOOR_PIN);
   statePIRSensor = digitalRead(PIR_PIN);
   boolean currentDoorValue = stateMagDoor;
   boolean currentPIRValue = statePIRSensor;
-  interrupts();
   byte finalValue = 0;
   finalValue += (currentDoorValue) ? 1 : 0;
   finalValue += (currentPIRValue) ? 2 : 0;
   return finalValue;
 }
+
 short getDistance()
 {
   digitalWrite(TRIG_PIN, LOW);
