@@ -25,9 +25,15 @@ const byte FETCH_DATA_COMMAND = 17;
 // const byte SELECT_IS_EITHER = 7;
 // const byte RESET_TAMPER_FLAG = 8;
 // const byte RECALIBRATE = 9; //should also reset tamper flag
-// volatile bool tamper;
 
-
+struct AccelerometerBounds{
+  float xMin;
+  float xMax;
+  float yMin;
+  float yMax;
+  float zMin;
+  float zMax;
+};
 volatile byte selectorByte = 0;
 const short PERIODIC_LENGTH = 3000;
 const byte PACKET_SIZE = 3*sizeof(float) + sizeof(short) + sizeof(byte);
@@ -38,12 +44,15 @@ const byte DOOR_PIN = 4;
 const byte DISTANCE_THRESHOLD_CM = 200;
 const short ACCELEROMETER_IDENTIFIER = 54321;
 const short CALIBRATION_TIME_MS = 4000;
-
+const float accelOffset = 0.4;
 //Non-const values
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(ACCELEROMETER_IDENTIFIER);
 long unsigned int pause = 5000;
 volatile boolean stateMagDoor; // 0  close / 1 open
 volatile boolean statePIRSensor;
+bool tampered;
+bool checkTamper;
+AccelerometerBounds accelBounds;
 unsigned long startTime;
 
 void setup() {
@@ -61,25 +70,48 @@ void setup() {
   lsm303_accel_range_t new_range = accel.getRange();
   accel.setMode(LSM303_MODE_NORMAL);
   lsm303_accel_mode_t new_mode = accel.getMode();
-  
+
+  tampered = false;
+  calibrateAccelerometer();
+  checkTamper = true;
   //Set pin modes
   pinMode(DOOR_PIN, INPUT_PULLUP);
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   pinMode(PIR_PIN, INPUT);
-
-  // tamper = false;
-
   //Set start time
   startTime = millis();
 }
-
+void calibrateAccelerometer(){
+  sensors_vec_t accelerometerData = getAccelerometerData();
+  accelBounds.xMin = accelerometerData.x - accelOffset;
+  accelBounds.xMax = accelerometerData.x + accelOffset;
+  accelBounds.yMin = accelerometerData.y - accelOffset;
+  accelBounds.yMax = accelerometerData.y + accelOffset;
+  accelBounds.zMin = accelerometerData.z - accelOffset;
+  accelBounds.zMax = accelerometerData.z + accelOffset;
+}
+void checkAccelerometer(){
+  sensors_vec_t accelData = getAccelerometerData();
+  bool movedXPos = (accelBounds.xMax < accelData.x);
+  bool movedXNeg = (accelBounds.xMin > accelData.x);
+  bool movedYPos = (accelBounds.yMax < accelData.y);
+  bool movedYNeg = (accelBounds.yMin > accelData.y);
+  bool movedZPos = (accelBounds.zMax < accelData.z);
+  bool movedZNeg = (accelBounds.zMin > accelData.z);
+  tampered = (movedXPos || movedXNeg 
+    || movedYPos || movedYNeg
+    || movedZPos || movedZNeg);
+}
 
 void loop() {
   if(Serial1.available()){
 
     // --------------------------------------------
     // on demand data collection & packet creation
+    if(checkTamper){
+      checkAccelerometer();
+    }
     int value = Serial1.read();
     if(value == FETCH_DATA_COMMAND){
       byte* packet = createPacket();
@@ -136,26 +168,28 @@ void loop() {
       // else !either:
       // .
 
-      byte* packet = createPacket();
-      Serial1.write(packet, PACKET_SIZE);
-      free(packet);
-      packet = NULL;
+      //byte* packet = createPacket();
+      //Serial1.write(packet, PACKET_SIZE);
+      //free(packet);
+      //packet = NULL;
+      Serial.println(tampered);
       startTime = millis();
     }
-
   }
 }
 
-
+void checkAccelerometerStatus(){
+  
+}
 byte* createPacket(){
-    sensors_event_t event = getAccelerometerData();
+    sensors_vec_t event = getAccelerometerData();
     floatBytes accelX;
     floatBytes accelY;
     floatBytes accelZ;
     shortBytes distance;
-    accelX.floatVal = event.acceleration.x;
-    accelY.floatVal = event.acceleration.y;
-    accelZ.floatVal = event.acceleration.z;
+    accelX.floatVal = event.x;
+    accelY.floatVal = event.y;
+    accelZ.floatVal = event.z;
     distance.shortVal = getDistance();
     byte booleanByte = calculateBooleanByte();
     byte* packet = malloc(PACKET_SIZE);
@@ -184,10 +218,10 @@ byte* createPacket(){
     packet[boolValStart] = booleanByte;
     return packet;
 }
-sensors_event_t getAccelerometerData(){
+sensors_vec_t getAccelerometerData(){
     sensors_event_t event;
     accel.getEvent(&event);
-    return event;
+    return event.acceleration;
 }
 //calculates the byte value corresponding to the tracked booleans
 //Currently, this is the PIR sensor and the door sensor
