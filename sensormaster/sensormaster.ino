@@ -84,7 +84,7 @@ void setup() {
   //Set pin modes
   pinMode(DOOR_PIN, INPUT_PULLUP);
   pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
+  pinMode(ECHO_PIN, INPUT);   
   pinMode(PIR_PIN, INPUT);
 
   tamper = false;
@@ -126,6 +126,16 @@ void loop() {
     // take in command
     int value = Serial1.read();
 
+    // SET PERIODIC REPORT:
+    if (value >= 100 && value <= 1000) {
+      PERIODIC_LENGTH = value;
+    }
+
+    // TURN OFF Periodic REPORT:
+    if (value < 0) {
+      PERIODIC_LENGTH = -1; //turn off periodic reports
+    }
+
     // ON DEMAND data collection & packet creation
     if(value == FETCH_DATA_COMMAND){
       byte* packet = createPacket();
@@ -157,7 +167,8 @@ void loop() {
     // periodic packet creation
     // & system's behavior meaningfully changes 
     // according to the collected sensor data
-    else if (millis() - startTime > PERIODIC_LENGTH) {
+    else if (millis() - startTime > PERIODIC_LENGTH 
+          && PERIODIC_LENGTH >= 100) {
       // ------------------------------------------------
       // What is select?
       // select is a byte indicating which sensor 
