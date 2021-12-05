@@ -84,6 +84,8 @@ void setup() {
   pinMode(ECHO_PIN, INPUT);   
   pinMode(PIR_PIN, INPUT);
 
+  PERIODIC_LENGTH = 1000 //default to 1 Hz
+  select = 0; //default to door 
   tampered = false;
   //Set start time
   startTime = millis();
