@@ -94,7 +94,7 @@ void loop() {
       // What is selectorState? -->
       
       // if selectorState is a function pointer, 
-      //  in set to which function pointer
+      //  is set to which function pointer
       //  of possible trigger functions: PIR, Door, Both, or Either:
       //    both or either will just be functions containing 
       //    boolean logic calling both of door/pir functions
