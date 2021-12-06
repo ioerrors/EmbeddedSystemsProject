@@ -2,32 +2,24 @@
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 /*
-ASSUMPTIONS ABOUT VALUE SIZES
-short: 2 bytes
-float: 4 bytes
-byte: 1 byte
+  ASSUMPTIONS ABOUT VALUE SIZES
+  short: 2 bytes
+  float: 4 bytes
+  byte: 1 byte
 */
-//typedefs for byte conversion
+//Typedef to access bits of a short
 typedef union {
-  float floatVal;
-  byte bytes[sizeof(float)];
-}floatBytes;
-typedef union {
-  float shortVal;
+  short shortVal;
   byte bytes[sizeof(short)];
-}shortBytes;
+} shortBytes;
+//typedef to access bits of an integer
+typedef union{
+  unsigned long longVal;
+  byte bytes[sizeof(unsigned long)];
+}unsignedLongBytes;
 
-//const command values
-const byte FETCH_DATA_COMMAND = 17;
-const byte SELECT_IS_DOOR = 1;
-const byte SELECT_IS_PIR = 2;
-const byte SELECT_IS_EITHER = 3;
-const byte IGNORE_TAMPER_FLAG = 7;
-const byte RESET_TAMPER_FLAG = 8;
-const byte RECALIBRATE = 9; //should also reset tamper flag
-
-
-struct AccelerometerBounds{
+//Accelerometer bounds struct
+struct AccelerometerBounds {
   float xMin;
   float xMax;
   float yMin;
@@ -36,63 +28,87 @@ struct AccelerometerBounds{
   float zMax;
 };
 
-const byte PACKET_SIZE = 3*sizeof(float) + sizeof(short) + sizeof(byte); ///!!!
+//const command values
+const byte FETCH_DATA_COMMAND = 17;
+const byte SELECT_IS_PIR = 1;
+const byte SELECT_IS_DOOR = 0;
+const byte SELECT_IS_EITHER = 2;
+const byte RESET_TAMPER_FLAG = 8;
+const byte RECALIBRATE = 9; //should also reset tamper flag
+
+//Bytes consts relating to configuration message
+const byte TAMPER_BYTE_VALUE = 1;
+const byte DOOR_BYTE_VALUE = 2;
+const byte PIR_BYTE_VALUE = 4;
+
+//Pin definitions
 const byte PIR_PIN = 7;
 const byte TRIG_PIN = 6;
 const byte ECHO_PIN = 5;
 const byte DOOR_PIN = 4;
+
+//other consts
+const byte MESSAGE_COUNT_OFFSET = 32;
+const byte DISTANCE_THRESHOLD_CM = 511;
+
+short PERIODIC_LENGTH = 1000; // 1 Hz
+
+//Accelerometer values
 const short ACCELEROMETER_IDENTIFIER = 54321;
 const float accelOffset = 0.4;
-
-//Non-const values
-Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(ACCELEROMETER_IDENTIFIER);
+const Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(ACCELEROMETER_IDENTIFIER);
 AccelerometerBounds accelBounds;
 
-unsigned short PERIODIC_LENGTH = 1000; // 1 Hz
+long unsigned int pause = 1000;
+
+byte configurationByte;
+//flags for sensors
 boolean stateMagDoor; // 0  close / 1 open
 boolean statePIRSensor;
-
-// tamper flag
 bool tampered;
-// Door or PIR or Either triggers other sensor reports
-byte select = 0; //default is select = door
 
-bool checkTamper;
+byte packetSize;
 
 unsigned long startTime;
+
+unsignedLongBytes messageCount;
 
 void setup() {
   //Initialize serial busses
   while (!Serial);
   Serial.begin(9600);
-  while (!Serial1);
-  Serial1.begin(9600);
-  
+  while (!Serial2);
+  Serial2.begin(9600);
+
   //Initialize accelerometer
   if (!accel.begin()) {
-    Serial.println("Oops, no LSM303 detected ... Check your wiring!"); 
+    Serial.println("Oops, no LSM303 detected ... Check your wiring!");
   }
   accel.setRange(LSM303_RANGE_4G);
-  lsm303_accel_range_t new_range = accel.getRange();
   accel.setMode(LSM303_MODE_NORMAL);
-  lsm303_accel_mode_t new_mode = accel.getMode();
 
   calibrateAccelerometer();
-  checkTamper = true;
   //Set pin modes
   pinMode(DOOR_PIN, INPUT_PULLUP);
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);   
   pinMode(PIR_PIN, INPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(TRIG_PIN, OUTPUT);
 
-  PERIODIC_LENGTH = 1000 //default to 1 Hz
-  select = 0; //default to door 
+  //Initialize sensor states
   tampered = false;
+  statePIRSensor = false;
+  stateMagDoor = false;
+
   //Set start time
   startTime = millis();
+  configurationByte = 7;
+  packetSize = 0;
+  messageCount.longVal = 0;
 }
 
-void calibrateAccelerometer(){
+//!! I like this
+void calibrateAccelerometer() {
+  tampered = false;
   sensors_vec_t accelerometerData = getAccelerometerData();
   accelBounds.xMin = accelerometerData.x - accelOffset;
   accelBounds.xMax = accelerometerData.x + accelOffset;
@@ -102,7 +118,7 @@ void calibrateAccelerometer(){
   accelBounds.zMax = accelerometerData.z + accelOffset;
 }
 
-void checkAccelerometer(){
+bool checkAccelerometer() {
   sensors_vec_t accelData = getAccelerometerData();
   bool movedXPos = (accelBounds.xMax < accelData.x);
   bool movedXNeg = (accelBounds.xMin > accelData.x);
@@ -110,189 +126,189 @@ void checkAccelerometer(){
   bool movedYNeg = (accelBounds.yMin > accelData.y);
   bool movedZPos = (accelBounds.zMax < accelData.z);
   bool movedZNeg = (accelBounds.zMin > accelData.z);
-  tampered = (movedXPos || movedXNeg 
-    || movedYPos || movedYNeg
-    || movedZPos || movedZNeg);
+  return (movedXPos || movedXNeg
+          || movedYPos || movedYNeg
+          || movedZPos || movedZNeg);
 }
 
 void loop() {
-  if(Serial1.available()){
 
+  // --------------------------------------------
+  // PERIODIC REPORT:
+  // & system's behavior meaningfully changes
+  // according to the collected sensor data
+  if (millis() - startTime > PERIODIC_LENGTH
+      && PERIODIC_LENGTH >= 100) {
+
+    // ------------------------------------------------
+    // MEANINGFUL USE OF SENSOR DATA:
+    // What is select?
+    // select is a byte indicating which sensor
+    // between the PIR and Door turn on
+    // other sensor sampling.
+    // if select senses no entrance event,
+    // returns just select value
+
+    // if select does detect entrance event
+    //  other sensors are turned on to report to end user
+    // ------------------------------------------------
+
+    // sets stateMagDoor & statePIRSensor
+    if (configurationByte != 0) {
+      readSensorData();
+      messageCount.longVal ++;
+      byte* packet = createPacket(true);
+      free(packet);
+      packet = NULL;
+    }
+    //packet = NULL;
+    startTime = millis();
+  }
+  if(Serial2.available()){
+    while(Serial2.available()){
+      Serial.print(Serial2.read());
+      Serial.print(" ");
+    }
+    Serial.println();
+  }
+  /*
+    if(Serial1.available()){
+    //Serial.println("received message");
     // --------------------------------------------
     // command responses:
-    if(checkTamper){
-      checkAccelerometer();
-    }
-
     // take in command
     int value = Serial1.read();
 
     // ON DEMAND data collection & packet creation
-    if(value == FETCH_DATA_COMMAND){
-      byte* packet = createPacket();
-      Serial1.write(packet, PACKET_SIZE);
+    if(value == FETCH_DATA_COMMAND)
+    {
+      readSensorData();
+      byte* packet = createPacket(false);
       free(packet);
       packet = NULL;
     }
 
-    // SET PERIODIC REPORT INTERVAL: //0.1 Hz to 10 Hz
-    if (value >= 100 && value <= 10000) {
+    // SET PERIODIC REPORT INTERVAL:
+    if (value >= 100 && value <= 1000)
+    {
       PERIODIC_LENGTH = value;
     }
 
     // TURN OFF Periodic REPORT:
-    if (value == 0) {
-      PERIODIC_LENGTH = 0; //turn off periodic reports
+    if (value < 0)
+    {
+      PERIODIC_LENGTH = -1; //turn off periodic reports
     }
 
     // change select sensor
     if(value == SELECT_IS_DOOR
     || value == SELECT_IS_PIR
-    || value == SELECT_IS_EITHER) {
-      select = value;
-    }
+    || value == SELECT_IS_EITHER)
+    {
 
-    // Ignore tamper flag
-    if(value == IGNORE_TAMPER_FLAG) {
-      checkTamper = false;
     }
 
     // reset tamper flag
-    if(value == RESET_TAMPER_FLAG) {
-      tampered = false;
+    if(value == RESET_TAMPER_FLAG)
+    {
+
     }
 
     // recalibrate tamper boundaries
-    if(value == RECALIBRATE) {
-      tampered = false;
-      calibrateAccelerometer();
+    if(value == RECALIBRATE)
+    {
+
     }
-
-    // --------------------------------------------
-    // PERIODIC REPORT:
-    // & system's behavior meaningfully changes 
-    // according to the collected sensor data
-    else if (millis() - startTime > PERIODIC_LENGTH 
-          && PERIODIC_LENGTH >= 100) {
-
-      // ------------------------------------------------
-      // MEANINGFUL USE OF SENSOR DATA:
-      // What is select?
-      // select is a byte indicating which sensor 
-      // between the PIR and Door turn on 
-      // other sensor sampling.
-      // if select senses no entrance event,
-      // returns just select value
-      
-      // if select does detect entrance event
-      //  other sensors are turned on to report to end user
-      // ------------------------------------------------
-      
-      // sets stateMagDoor & statePIRSensor
-      byte booleanByte = calculateBooleanByte();
-
-      // if select == door
-      if (select == 1) {
-          if (stateMagDoor == true) { // door is open
-              byte* packet = createPacket();
-              Serial1.write(packet, PACKET_SIZE);
-              free(packet);
-              packet = NULL;
-          }
-          else { // transmits just PIR and DOOR data
-              Serial1.write(booleanByte, sizeof(byte)); //!!
-          }
-      }
-
-      // if select == PIR    
-      if (select == 2) {
-          if (statePIRSensor == true) { // motion detected
-              byte* packet = createPacket();
-              Serial1.write(packet, PACKET_SIZE);
-              free(packet);
-              packet = NULL;
-          }
-          else { // transmits just PIR and DOOR data
-              Serial1.write(booleanByte, sizeof(byte)); //!!
-          }
-      }
-
-      // if select is either
-      if (select == 3) {
-        if (statePIRSensor == true  // motion detected
-            || stateMagDoor == true) { // door open
-            byte* packet = createPacket();
-            Serial1.write(packet, PACKET_SIZE);
-            free(packet);
-            packet = NULL;
-        }
-        else { // transmits just PIR and DOOR data
-            Serial1.write(booleanByte, sizeof(byte)); //!!
-        }
-      }
-      startTime = millis();
     }
+  */
+}
+void readSensorData() {
+  byte checkTamper = configurationByte & TAMPER_BYTE_VALUE;
+  byte checkPIR = configurationByte & PIR_BYTE_VALUE;
+  byte checkDoor = configurationByte & DOOR_BYTE_VALUE;
+  if (checkTamper == TAMPER_BYTE_VALUE) {
+    tampered = checkAccelerometer();
+  }
+  if (checkPIR == PIR_BYTE_VALUE)
+  {
+    statePIRSensor = digitalRead(PIR_PIN);
+  }
+  if (checkDoor == DOOR_BYTE_VALUE)
+  {
+    stateMagDoor = digitalRead(DOOR_PIN);
   }
 }
-
-byte* createPacket(){
-    sensors_vec_t event = getAccelerometerData();
-    floatBytes accelX;
-    floatBytes accelY;
-    floatBytes accelZ;
-    shortBytes distance;
-    accelX.floatVal = event.x;
-    accelY.floatVal = event.y;
-    accelZ.floatVal = event.z;
-    distance.shortVal = getDistance();
-    byte booleanByte = calculateBooleanByte();
-    byte* packet = malloc(PACKET_SIZE);
-    //add accelX to packet
-    byte xStart = 0;
-    byte yStart = sizeof(float);
-    byte zStart = sizeof(float)*2;
-    byte distanceStart = sizeof(float)*3;
-    byte boolValStart = sizeof(float)*3 + sizeof(short);
-    for(int I = xStart; I < yStart; I++){
-      packet[I] = accelX.bytes[I];
-    }
-    //add accelY to packet
-    for(byte I = yStart; I < zStart; I++){
-      packet[I] = accelY.bytes[I];
-    }
-    //add accelZ to packet
-    for(byte I = zStart; I < distanceStart; I++){
-      packet[I] = accelZ.bytes[I];
-    }
-    //add distance
-    for(byte I = distanceStart; I < boolValStart; I++)
-    {
-      packet[I] = distance.bytes[I];
-    }
-    packet[boolValStart] = booleanByte;
-    return packet;
-}
-sensors_vec_t getAccelerometerData(){
-    sensors_event_t event;
-    accel.getEvent(&event);
-    return event.acceleration;
-}
-
-
-//calculates the byte value corresponding to the tracked booleans
-//Currently, this is the PIR sensor and the door sensor
-//from least significant bit to most, the values are order as:
-//door sensor, PIR sensor
-byte calculateBooleanByte()
+byte* createPacket(boolean periodic)
 {
-  stateMagDoor = digitalRead(DOOR_PIN);
-  statePIRSensor = digitalRead(PIR_PIN);
-  boolean currentDoorValue = stateMagDoor;
-  boolean currentPIRValue = statePIRSensor;
-  byte finalValue = 0;
-  finalValue += (currentDoorValue) ? 1 : 0;
-  finalValue += (currentPIRValue) ? 2 : 0;
-  return finalValue;
+  shortBytes distance;
+  byte leadByte = 0;
+  boolean includeDistance = false;
+  boolean checkTamper = (configurationByte & TAMPER_BYTE_VALUE) == TAMPER_BYTE_VALUE;
+  boolean checkPIR = (configurationByte & PIR_BYTE_VALUE) == PIR_BYTE_VALUE;
+  boolean checkDoor = (configurationByte & DOOR_BYTE_VALUE) == DOOR_BYTE_VALUE;
+  packetSize = 1;
+  if (checkPIR && statePIRSensor)
+  {
+    leadByte += 2; //flip three bit
+  }
+  if (checkDoor && stateMagDoor)
+  {
+    leadByte += 4; //flip fourth bit
+  }
+  if (checkTamper && tampered)
+  {
+    leadByte += 8; //flip second bit
+  }
+  if(periodic)
+  {
+    leadByte += 16;  
+  }
+  if (checkPIR || checkDoor)
+  {
+    includeDistance = true;
+    distance.shortVal = getDistance();
+    leadByte += 128;
+    packetSize ++;
+    if (distance.shortVal >= 256 && distance.shortVal < 512)
+    {
+      leadByte += 1;
+    }
+  }
+  int messageCounterSize = 1;
+  if(messageCount.longVal >= pow(2,8)) //if it is over 2^8, needs another byte
+  {
+    messageCounterSize ++;
+  }
+  if(messageCount.longVal >= pow(2,16)) //if it is over 2^16, needs another byte
+  { 
+    messageCounterSize ++;
+  }
+  if(messageCount.longVal >= pow(2,24))//if it is over 2^24, hit the max message count, roll back to 0
+  {
+    messageCount.longVal = 0;
+    messageCounterSize = 1;
+  }
+  leadByte += MESSAGE_COUNT_OFFSET * messageCounterSize;
+  packetSize += messageCounterSize;
+  byte* packet = malloc(packetSize);
+  packet[0] = leadByte;
+  if(includeDistance)
+  {
+    packet[1] = distance.bytes[0];  
+  }
+  for(int I = 0; I < messageCounterSize; I++)
+  {
+    byte messageIndex = messageCounterSize - 1 - I;
+    byte packetIndex = I + (int) includeDistance + 1;
+    packet[packetIndex] = messageCount.bytes[messageIndex];
+  }
+  return packet;
+}
+sensors_vec_t getAccelerometerData()
+{
+  sensors_event_t event;
+  accel.getEvent(&event);
+  return event.acceleration;
 }
 
 short getDistance()
