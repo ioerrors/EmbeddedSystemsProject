@@ -31,9 +31,11 @@ struct AccelerometerBounds {
 
 //const command values
 const byte FETCH_DATA_COMMAND = 17;
-const byte SELECT_IS_PIR = 1;
-const byte SELECT_IS_DOOR = 0;
-const byte SELECT_IS_EITHER = 2;
+
+const byte DOOR_ON = 0;
+const byte DOOR_OFF = 1;
+const byte PIR_ON = 2;
+const byte PIR_OFF = 3;
 const byte RESET_TAMPER_FLAG = 8;
 const byte RECALIBRATE = 9; //should also reset tamper flag
 
@@ -135,7 +137,6 @@ bool checkAccelerometer() {
 }
 
 void loop() {
-
   // --------------------------------------------
   // PERIODIC REPORT:
   // & system's behavior meaningfully changes
@@ -166,13 +167,14 @@ void loop() {
     while(Serial2.available())
     {
       Serial.print(Serial2.read());
+
+      // 
       Serial.print(" ");
     }
     Serial.println();
   }
 }
-void handleRequest()
-{
+
   
 }
 void readSensorData() {
