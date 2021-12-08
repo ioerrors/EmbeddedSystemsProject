@@ -26,7 +26,6 @@ void setup()
   WiFi.softAP(WIFI_SSID);
   //configure wifi client
   server.begin();
-  pinMode(D4, OUTPUT);
 }
  
 void loop() 

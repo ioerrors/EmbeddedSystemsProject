@@ -31,11 +31,17 @@ struct AccelerometerBounds {
 
 //const command values
 const byte FETCH_DATA_COMMAND = 17;
-const byte SELECT_IS_PIR = 1;
-const byte SELECT_IS_DOOR = 0;
-const byte SELECT_IS_EITHER = 2;
+
+const byte DOOR_ON = 0;
+const byte DOOR_OFF = 1;
+const byte PIR_ON = 2;
+const byte PIR_OFF = 3;
 const byte RESET_TAMPER_FLAG = 8;
-const byte RECALIBRATE = 9; //should also reset tamper flag
+const byte RECALIBRATE = 9;
+const byte CHANGE_VALUE = 1;
+const byte SET_HERTZ = 2;
+const byte REQUEST_DATA = 4;
+const byte CONFIG_BYTE_REQUEST = 8;
 
 //Bytes consts relating to configuration message
 const byte TAMPER_BYTE_VALUE = 1;
@@ -76,14 +82,16 @@ unsigned long startTime;
 
 unsignedLongBytes messageCount;
 
-void setup() {
+void setup() 
+{
   //Initialize serial busses
   while (!Serial);
   Serial.begin(9600);
   while (!Serial2);
   Serial2.begin(9600);
   //Initialize accelerometer
-  if (!accel.begin()) {
+  if (!accel.begin()) 
+  {
     Serial.println("Oops, no LSM303 detected ... Check your wiring!");
   }
   accel.setRange(LSM303_RANGE_4G);
@@ -110,7 +118,8 @@ void setup() {
 }
 
 //!! I like this
-void calibrateAccelerometer() {
+void calibrateAccelerometer() 
+{
   tampered = false;
   sensors_vec_t accelerometerData = getAccelerometerData();
   accelBounds.xMin = accelerometerData.x - accelOffset;
@@ -121,7 +130,8 @@ void calibrateAccelerometer() {
   accelBounds.zMax = accelerometerData.z + accelOffset;
 }
 
-bool checkAccelerometer() {
+bool checkAccelerometer() 
+{
   sensors_vec_t accelData = getAccelerometerData();
   bool movedXPos = (accelBounds.xMax < accelData.x);
   bool movedXNeg = (accelBounds.xMin > accelData.x);
@@ -142,38 +152,39 @@ void loop() {
   // according to the collected sensor data
    if (millis() - startTime > PERIODIC_LENGTH &&
    configurationByte&PERIODIC_SAMPLING_VALUE == PERIODIC_SAMPLING_VALUE) {
-
-    // sets stateMagDoor & statePIRSensor
-    if (configurationByte != 0) {
-      readSensorData();
-      messageCount.longVal ++;
-      byte* packet = createPacket(true);
-      for(int I = 0; I < packetSize; I++)
-      {
-        Serial.print(packet[I]);
-        Serial.print(" ");
-      }
-      Serial.println();
-      Serial2.write(packet, packetSize);
-      free(packet);
-      packet = NULL;
+    readSensorData();
+    messageCount.longVal ++;
+    byte* packet = createPacket(true);
+    for(int I = 0; I < packetSize; I++)
+    {
+      Serial.print(packet[I]);
+      Serial.print(" ");
     }
+    Serial.println();
+    Serial2.write(packet, packetSize);
+    free(packet);
+    packet = NULL;
     startTime = millis();
   } 
   if(Serial2.available())
   {
     Serial.println("Serial input");
-    while(Serial2.available())
+    byte commandByte = Serial2.read();
+    switch(commandByte)
     {
-      Serial.print(Serial2.read());
-      Serial.print(" ");
+      case CHANGE_VALUE:
+        byte configRequestByte = Serial2.read();
+        break;
+      case SET_HERTZ:
+        byte hertzValue[SET_HERTZ];
+        for(int I = 0; I < SET_HERTZ; I++)
+        {
+          hertzValue[I] = Serial2.read();
+        }
+        
+        break;
     }
-    Serial.println();
   }
-}
-void handleRequest()
-{
-  
 }
 void readSensorData() {
   // ------------------------------------------------
@@ -237,6 +248,10 @@ byte* createPacket(boolean periodic)
     if (distance.shortVal >= 256 && distance.shortVal < 512)
     {
       leadByte += 1;
+    }
+    if(distance.shortVal >= 512)
+    {
+      distance.shortVal = 0;
     }
   }
   int messageCounterSize = 1;
