@@ -157,10 +157,13 @@ byte processCommand(String command)
     case "SET_HERTZ":
       byte hertz = 2;
       client.write(hertz);
-      System.out.println("Input interval in ms:")
-      client.write(changeVal);
+      Serial.println("Input interval in ms:")
+      while(!Serial.available());
+      int interval = atoi(Serial.readString());
+      client.write(interval);
       break;
     case "REQUEST_DATA":
+
       break;
     case "REQUEST_CONFIG":
       break;
