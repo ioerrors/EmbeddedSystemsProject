@@ -47,6 +47,7 @@ void printCommands() {
   Serial.println("RECALIBRATE");
   Serial.println("HELP");
 }
+
 void connectToServer()
 {
   Serial.println("Connecting to server");
@@ -107,7 +108,67 @@ byte processCommand(String command)
       break;
     case "PIR_DETECTION_ON":
       byte changeVal = 68;
+      byte change = 1;
+      client.write(change);
+      client.write(changeVal);
       break;
+    case "PIR_DETECTION_OFF":
+      byte changeVal = 64;
+      byte change = 1;
+      client.write(change);
+      client.write(changeVal);
+      break;
+    case "DOOR_DETECTION_ON":
+      byte changeVal = 34;
+      byte change = 1;
+      client.write(change);
+      client.write(changeVal);
+      break;
+    case "DOOR_DETECTION_OFF":
+      byte changeVal = 32;
+      byte change = 1;
+      client.write(change);
+      client.write(changeVal);
+      break;
+    case "TAMPER_DETECTION_ON":
+      byte changeVal = 17;
+      byte change = 1;
+      client.write(change);
+      client.write(changeVal);
+      break;
+    case "TAMPER_DETECTION_OFF":
+      byte changeVal = 16;
+      byte change = 1;
+      client.write(change);
+      client.write(changeVal);
+      break;
+    case "PERIODIC_REPORTS_ON":
+      byte changeVal = 136;
+      byte change = 1;
+      client.write(change);
+      client.write(changeVal);
+      break;
+    case "PERIODIC_REPORT_OFF":
+      byte changeVal = 128;
+      byte change = 1;
+      client.write(change);
+      client.write(changeVal);
+      break;
+    case "SET_HERTZ":
+      byte hertz = 2;
+      client.write(hertz);
+      
+      client.write(changeVal);
+      break;
+    case "REQUEST_DATA":
+      break;
+    case "REQUEST_CONFIG":
+      break;
+    case "RESET_TAMPER_FLAG":
+      break;
+    case "RECALIBRATE":
+      break;
+
     default:
       Serial.println("Unrecognized Command");
   }
