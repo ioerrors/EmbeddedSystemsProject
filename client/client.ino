@@ -26,8 +26,27 @@ void setup() {
   Serial.println(WiFi.localIP());
   client.setSync(true);
   startTime = millis();
+  printCommands();
 }
 
+
+void printCommands() { 
+Serial.println("Supported Commands:");
+Serial.println("PIR_DETECTION_ON");
+Serial.println("PIR_DETECTION_OFF");
+Serial.println("DOOR_DETECTION_ON");
+Serial.println("DOOR_DETECTION_OFF");
+Serial.println("TAMPER_DETECTION_ON");
+Serial.println("TAMPER_DETECTION_OFF");
+Serial.println("PERIODIC_REPORTS_ON");
+Serial.println("PERIODIC_REPORT_OFF");
+Serial.println("SET_HERTZ");
+Serial.println("REQUEST_DATA");
+Serial.println("REQUEST_CONFIG");
+Serial.println("RESET_TAMPER_FLAG");
+Serial.println("RECALIBRATE");
+
+}
 void connectToServer()
 {
   Serial.println("Connecting to server");

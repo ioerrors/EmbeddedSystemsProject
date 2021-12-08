@@ -135,7 +135,6 @@ void setup()
   handlingRequest=false;
   periodicLength.shortVal = 1000;
 }
-
 //!! I like this
 void calibrateAccelerometer() 
 {
