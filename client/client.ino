@@ -46,14 +46,15 @@ void loop() {
     if(client.available() > 0)
     {
       byte messageSize = client.read();
-      while(client.available() != messageSize);
-      byte *message = (byte *)malloc(messageSize);
-      for(int I = 0; I < messageSize; I++)
-      {
-        message[I] = client.read();
-      }
-      processMessage(message, messageSize);
+      Serial.println(messageSize);
+      byte* message = readMessage(messageSize);
+      processSensorData(message, messageSize);
       free(message);
+    }
+    if(Serial.available())
+    {
+      String command = Serial.readString();
+      byte commandByte = processCommand(command);
     }
   }
   else
@@ -61,7 +62,37 @@ void loop() {
     connectToServer();
   }
 }
-void processMessage(byte* message, byte messageSize)
+/*
+ * Supported Commands
+ * PIR_DETECTION_ON
+ * PIR_DETECTION_OFF
+ * DOOR_DETECTION_ON
+ * DOOR_DETECTION_OFF
+ * TAMPER_DETECTION_ON
+ * TAMPER_DETECTION_OFF
+ * PERIODIC_REPORTS_ON
+ * PERIODIC_REPORT_OFF
+ * SET_HERTZ
+ * REQUEST_DATA
+ * REQUEST_CONFIG
+ * RESET_TAMPER_FLAG
+ * RECALIBRATE
+ */
+byte processCommand(String command)
+{
+  
+}
+byte* readMessage(byte messageSize)
+{
+  while(client.available() != messageSize);
+  byte *message = (byte *)malloc(messageSize);
+  for(int I = 0; I < messageSize; I++)
+  {
+    message[I] = client.read();
+  }
+  return message;
+}
+void processSensorData(byte* message, byte messageSize)
 {
   for(int I = 0; I < messageSize; I++)
   {

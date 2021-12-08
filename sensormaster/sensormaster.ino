@@ -29,15 +29,33 @@ struct AccelerometerBounds {
   float zMax;
 };
 
-//const command values
-const byte FETCH_DATA_COMMAND = 17;
+//Periodic data variables
+const short PERIODIC_UPPER_LIMIT = 10000;
+const short PERIODIC_LOWER_LIMIT = 100;
 
-const byte RESET_TAMPER_FLAG = 8;
-const byte RECALIBRATE = 9;
+//const command values
+/*
+ * Supported Commands
+ * PIR_DETECTION_ON
+ * PIR_DETECTION_OFF
+ * DOOR_DETECTION_ON
+ * DOOR_DETECTION_OFF
+ * TAMPER_DETECTION_ON
+ * TAMPER_DETECTION_OFF
+ * PERIODIC_REPORTS_ON
+ * PERIODIC_REPORT_OFF
+ * SET_HERTZ
+ * REQUEST_DATA
+ * REQUEST_CONFIG
+ * RESET_TAMPER_FLAG
+ * RECALIBRATE
+ */
 const byte CHANGE_VALUE = 1;
 const byte SET_HERTZ = 2;
 const byte REQUEST_DATA = 4;
 const byte CONFIG_BYTE_REQUEST = 8;
+const byte RESET_TAMPER_FLAG = 16;
+const byte RECALIBRATE = 32;
 
 //Bytes related to the new configuration byte request
 const byte CHANGE_TAMPER_VALUE = 16;
@@ -156,12 +174,6 @@ void loop() {
     readSensorData();
     messageCount.longVal ++;
     byte* packet = createPacket(true);
-    for(int I = 0; I < packetSize; I++)
-    {
-      Serial.print(packet[I]);
-      Serial.print(" ");
-    }
-    Serial.println();
     Serial2.write(packet, packetSize);
     free(packet);
     packet = NULL;
@@ -183,12 +195,38 @@ void loop() {
         {
           hertzValue[I] = Serial2.read();
         }
+        unsignedShortBytes newValue;
         for(int I = 0; I < sizeof(unsigned short); I++)
         {
-          periodicLength.bytes[I] = hertzValue[I];
+          newValue.bytes[I] = hertzValue[I];
         }
+        if(newValue.shortVal >= PERIODIC_LOWER_LIMIT && newValue.shortVal <= PERIODIC_UPPER_LIMIT)
+        {
+          periodicLength.shortVal = newValue.shortVal;
+        }
+        Serial.print("New periodic value: ");
+        Serial.println(periodicLength.shortVal);
         break;
-      case 
+      case REQUEST_DATA:
+        readSensorData();
+        messageCount.longVal ++;
+        byte* packet = createPacket(false);
+        Serial2.write(packet, packetSize);
+        free(packet);
+        packet = NULL;
+        break;
+      case CONFIG_BYTE_REQUEST:
+        Serial2.write(configurationByte);
+        break;
+      case RESET_TAMPER_FLAG:
+        tampered = false;
+        Serial2.write(
+        break;
+      case RECALIBRATE:
+        calibrateAccelerometer();
+        break;
+      default:
+        break;
     }
   }
 }
