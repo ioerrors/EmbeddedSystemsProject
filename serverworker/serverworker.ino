@@ -1,58 +1,66 @@
 #include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-
-const byte FETCH_DATA_COMMAND = 17;
-const byte PACKET_SIZE = 3*sizeof(float) + sizeof(short) + sizeof(byte);
-const short RESPONSE_TIME_MS = 5000;
-const char *ssid = "Alexahome";
-const char *password = "loranthus";
-const short TIMEOUT_MS = 2000; 
+#include <SoftwareSerial.h>
 unsigned long startTime;
 unsigned long timeElapsed;
-ESP8266WebServer server(80);
- 
-void handleSentVar() {
-  Serial.println("handleSentVar function called...");
-  Serial.write(FETCH_DATA_COMMAND);
-  startTime = millis();
-  timeElapsed = 0;
-  while(Serial.available() < PACKET_SIZE && timeElapsed < TIMEOUT_MS)
-  {
-    timeElapsed = millis()-startTime;
-  }
-  if(timeElapsed < TIMEOUT_MS)
-  {
-    byte* packet = (byte*) malloc(PACKET_SIZE);
-    Serial.readBytes(packet, PACKET_SIZE);
-    byte boolVal = packet[PACKET_SIZE-1];
-    Serial.println(boolVal);
-    free(packet);
-    server.send(200, "application/json", "{\"received\": true}");
-  }
-  else
-  {
-    server.send(500, "application/json", "Serial disconnected");
-  }
-}
+
+SoftwareSerial softSerial(D6, D7); //RX, TX
+
+const short CLEAR_WAIT = 10;
+const short SERIAL_WAIT = 10;
+//Related to wifi initialization
+const char *WIFI_SSID = "SensorHub";
+const short PORT = 8080;
+IPAddress selfip(192, 168, 0, 69);
+IPAddress gateway(192,168,0,1);
+IPAddress subnet(255,255,255,0);
+WiFiServer server(PORT);
  
 void setup() 
 {
   delay(1000);
   Serial.begin(9600);
-  Serial.println();
-  Serial.print("Configuring access point...");
- 
-  WiFi.softAP(ssid, password);
- 
-  IPAddress myIP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(myIP);
-  server.on("/data", HTTP_GET, handleSentVar);
+  softSerial.begin(9600); 
+  
+  //configure wifi server
+  WiFi.softAPConfig(selfip, gateway, subnet);
+  WiFi.softAP(WIFI_SSID);
+  //configure wifi client
   server.begin();
-  Serial.println("HTTP server started");
- 
+  pinMode(D4, OUTPUT);
 }
  
-void loop() {
-  server.handleClient();
+void loop() 
+{
+  WiFiClient client = server.available();
+  if(client)
+  {
+    while(client.connected())
+    {
+      if(softSerial.available())
+      {
+        delay(SERIAL_WAIT);
+        byte packetSize = softSerial.available();
+        byte* packet = (byte*) malloc(packetSize);
+        softSerial.read(packet, packetSize);
+        client.write(packetSize);
+        for(int I = 0; I < packetSize; I++)
+        {
+          Serial.print(packet[I]);
+          Serial.print(" ");
+        }
+        Serial.println();
+        for(int I = 0; I < packetSize; I++)
+        {
+          client.write(packet[I]);
+        }
+        free(packet);
+        packet = NULL;
+        client.flush();
+      }
+      while(client.available() > 0)
+      {
+        softSerial.write(client.read());
+      }
+    }
+  }
 }

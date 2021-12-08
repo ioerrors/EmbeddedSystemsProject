@@ -1,3 +1,4 @@
+
 #include <Adafruit_LSM303_Accel.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
@@ -65,6 +66,7 @@ byte configurationByte;
 //flags for sensors
 boolean stateMagDoor; // 0  close / 1 open
 boolean statePIRSensor;
+boolean handlingRequest;
 bool tampered;
 
 byte packetSize;
@@ -79,7 +81,6 @@ void setup() {
   Serial.begin(9600);
   while (!Serial2);
   Serial2.begin(9600);
-
   //Initialize accelerometer
   if (!accel.begin()) {
     Serial.println("Oops, no LSM303 detected ... Check your wiring!");
@@ -104,6 +105,7 @@ void setup() {
   configurationByte = 7;
   packetSize = 0;
   messageCount.longVal = 0;
+  handlingRequest=false;
 }
 
 //!! I like this
@@ -137,92 +139,52 @@ void loop() {
   // PERIODIC REPORT:
   // & system's behavior meaningfully changes
   // according to the collected sensor data
-  if (millis() - startTime > PERIODIC_LENGTH
-      && PERIODIC_LENGTH >= 100) {
-
-    // ------------------------------------------------
-    // MEANINGFUL USE OF SENSOR DATA:
-    // What is select?
-    // select is a byte indicating which sensor
-    // between the PIR and Door turn on
-    // other sensor sampling.
-    // if select senses no entrance event,
-    // returns just select value
-
-    // if select does detect entrance event
-    //  other sensors are turned on to report to end user
-    // ------------------------------------------------
-
-    // sets stateMagDoor & statePIRSensor
-    if (configurationByte != 0) {
-      readSensorData();
-      messageCount.longVal ++;
-      byte* packet = createPacket(true);
-      free(packet);
-      packet = NULL;
-    }
-    //packet = NULL;
-    startTime = millis();
+  if(!handlingRequest){
+     if (millis() - startTime > PERIODIC_LENGTH
+        && PERIODIC_LENGTH >= 100) {
+  
+      // sets stateMagDoor & statePIRSensor
+      if (configurationByte != 0) {
+        readSensorData();
+        messageCount.longVal ++;
+        byte* packet = createPacket(true);
+        for(int I = 0; I < packetSize; I++)
+        {
+          Serial.print(packet[I]);
+          Serial.print(" ");
+        }
+        Serial.println();
+        Serial2.write(packet, packetSize);
+        free(packet);
+        packet = NULL;
+      }
+      startTime = millis();
+    } 
   }
-  if(Serial2.available()){
-    while(Serial2.available()){
+  if(Serial2.available())
+  {
+    Serial.println("Serial input");
+    while(Serial2.available())
+    {
       Serial.print(Serial2.read());
       Serial.print(" ");
     }
     Serial.println();
   }
-  /*
-    if(Serial1.available()){
-    //Serial.println("received message");
-    // --------------------------------------------
-    // command responses:
-    // take in command
-    int value = Serial1.read();
-
-    // ON DEMAND data collection & packet creation
-    if(value == FETCH_DATA_COMMAND)
-    {
-      readSensorData();
-      byte* packet = createPacket(false);
-      free(packet);
-      packet = NULL;
-    }
-
-    // SET PERIODIC REPORT INTERVAL:
-    if (value >= 100 && value <= 1000)
-    {
-      PERIODIC_LENGTH = value;
-    }
-
-    // TURN OFF Periodic REPORT:
-    if (value < 0)
-    {
-      PERIODIC_LENGTH = -1; //turn off periodic reports
-    }
-
-    // change select sensor
-    if(value == SELECT_IS_DOOR
-    || value == SELECT_IS_PIR
-    || value == SELECT_IS_EITHER)
-    {
-
-    }
-
-    // reset tamper flag
-    if(value == RESET_TAMPER_FLAG)
-    {
-
-    }
-
-    // recalibrate tamper boundaries
-    if(value == RECALIBRATE)
-    {
-
-    }
-    }
-  */
 }
 void readSensorData() {
+  // ------------------------------------------------
+  // MEANINGFUL USE OF SENSOR DATA:
+  // What is configurationByte?
+  // configurationByte is a byte indicating 
+  // which sensor between the PIR and Door 
+  // turn on other sensor sampling.
+  // if select senses no entrance event,
+  // returns just select value
+
+  // if select does detect entrance event
+  // other sensors are turned on to report to end user
+  // ------------------------------------------------
   byte checkTamper = configurationByte & TAMPER_BYTE_VALUE;
   byte checkPIR = configurationByte & PIR_BYTE_VALUE;
   byte checkDoor = configurationByte & DOOR_BYTE_VALUE;
