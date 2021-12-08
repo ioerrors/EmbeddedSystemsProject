@@ -41,6 +41,7 @@ const byte RECALIBRATE = 9; //should also reset tamper flag
 const byte TAMPER_BYTE_VALUE = 1;
 const byte DOOR_BYTE_VALUE = 2;
 const byte PIR_BYTE_VALUE = 4;
+const byte PERIODIC_SAMPLING_VALUE=8;
 
 //Pin definitions
 const byte PIR_PIN = 7;
@@ -102,7 +103,7 @@ void setup() {
 
   //Set start time
   startTime = millis();
-  configurationByte = 7;
+  configurationByte = 15;
   packetSize = 0;
   messageCount.longVal = 0;
   handlingRequest=false;
@@ -139,28 +140,26 @@ void loop() {
   // PERIODIC REPORT:
   // & system's behavior meaningfully changes
   // according to the collected sensor data
-  if(!handlingRequest){
-     if (millis() - startTime > PERIODIC_LENGTH
-        && PERIODIC_LENGTH >= 100) {
-  
-      // sets stateMagDoor & statePIRSensor
-      if (configurationByte != 0) {
-        readSensorData();
-        messageCount.longVal ++;
-        byte* packet = createPacket(true);
-        for(int I = 0; I < packetSize; I++)
-        {
-          Serial.print(packet[I]);
-          Serial.print(" ");
-        }
-        Serial.println();
-        Serial2.write(packet, packetSize);
-        free(packet);
-        packet = NULL;
+   if (millis() - startTime > PERIODIC_LENGTH &&
+   configurationByte&PERIODIC_SAMPLING_VALUE == PERIODIC_SAMPLING_VALUE) {
+
+    // sets stateMagDoor & statePIRSensor
+    if (configurationByte != 0) {
+      readSensorData();
+      messageCount.longVal ++;
+      byte* packet = createPacket(true);
+      for(int I = 0; I < packetSize; I++)
+      {
+        Serial.print(packet[I]);
+        Serial.print(" ");
       }
-      startTime = millis();
-    } 
-  }
+      Serial.println();
+      Serial2.write(packet, packetSize);
+      free(packet);
+      packet = NULL;
+    }
+    startTime = millis();
+  } 
   if(Serial2.available())
   {
     Serial.println("Serial input");
@@ -171,6 +170,10 @@ void loop() {
     }
     Serial.println();
   }
+}
+void handleRequest()
+{
+  
 }
 void readSensorData() {
   // ------------------------------------------------
@@ -191,13 +194,25 @@ void readSensorData() {
   if (checkTamper == TAMPER_BYTE_VALUE) {
     tampered = checkAccelerometer();
   }
+  else
+  {
+    tampered = false;
+  }
   if (checkPIR == PIR_BYTE_VALUE)
   {
     statePIRSensor = digitalRead(PIR_PIN);
   }
+  else
+  {
+    statePIRSensor = false;
+  }
   if (checkDoor == DOOR_BYTE_VALUE)
   {
     stateMagDoor = digitalRead(DOOR_PIN);
+  }
+  else
+  {
+    stateMagDoor = false;
   }
 }
 byte* createPacket(boolean periodic)
@@ -209,23 +224,11 @@ byte* createPacket(boolean periodic)
   boolean checkPIR = (configurationByte & PIR_BYTE_VALUE) == PIR_BYTE_VALUE;
   boolean checkDoor = (configurationByte & DOOR_BYTE_VALUE) == DOOR_BYTE_VALUE;
   packetSize = 1;
-  if (checkPIR && statePIRSensor)
-  {
-    leadByte += 2; //flip three bit
-  }
-  if (checkDoor && stateMagDoor)
-  {
-    leadByte += 4; //flip fourth bit
-  }
-  if (checkTamper && tampered)
-  {
-    leadByte += 8; //flip second bit
-  }
-  if(periodic)
-  {
-    leadByte += 16;  
-  }
-  if (checkPIR || checkDoor)
+  leadByte += (statePIRSensor) ? 2 : 0;
+  leadByte += (stateMagDoor) ? 4 : 0;
+  leadByte += (tampered) ? 8 : 0;
+  leadByte += (periodic) ? 16 : 0;
+  if (stateMagDoor || statePIRSensor)
   {
     includeDistance = true;
     distance.shortVal = getDistance();
