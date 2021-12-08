@@ -180,8 +180,7 @@ void loop() {
         for(int I = 0; I < SET_HERTZ; I++)
         {
           hertzValue[I] = Serial2.read();
-        }
-        
+        } 
         break;
     }
   }
