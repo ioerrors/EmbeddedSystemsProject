@@ -56,9 +56,12 @@ void loop()
         packet = NULL;
         client.flush();
       }
-      while(client.available() > 0)
+      if(client.available())
       {
-        softSerial.write(client.read());
+        while(client.available() > 0)
+        {
+          softSerial.write(client.read());
+        }
       }
     }
   }
