@@ -157,7 +157,7 @@ byte processCommand(String command)
     case "SET_HERTZ":
       byte hertz = 2;
       client.write(hertz);
-      
+      System.out.println("Input interval in ms:")
       client.write(changeVal);
       break;
     case "REQUEST_DATA":
