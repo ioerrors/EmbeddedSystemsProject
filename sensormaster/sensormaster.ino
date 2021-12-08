@@ -180,7 +180,10 @@ void loop() {
         for(int I = 0; I < SET_HERTZ; I++)
         {
           hertzValue[I] = Serial2.read();
-        } 
+        }
+        for(int I = 0; I < sizeof(unsigned short); I++) {
+          periodicLength.bytes[I] = hertzValue[I];
+        }
         break;
     }
   }
