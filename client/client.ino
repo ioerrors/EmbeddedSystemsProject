@@ -96,10 +96,21 @@ void loop() {
  * REQUEST_CONFIG
  * RESET_TAMPER_FLAG
  * RECALIBRATE
+ * HELP
  */
 byte processCommand(String command)
 {
-  
+  switch(command)
+  {
+    case "HELP":
+      printCommands();
+      break;
+    case "PIR_DETECTION_ON":
+      byte changeVal = 68;
+      break;
+    default:
+      Serial.println("Unrecognized Command");
+  }
 }
 byte* readMessage(byte messageSize)
 {
