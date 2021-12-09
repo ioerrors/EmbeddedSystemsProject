@@ -1,5 +1,8 @@
-#include <ESP8266WiFi.h>
-
+//#include <ESP8266WiFi.h>
+#include <SoftwareSerial.h>
+#include <Adafruit_LSM303_Accel.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
 /*
  * Supported Commands
  * PIR_DETECTION_ON
@@ -32,12 +35,12 @@ enum COMMAND{
   REQUEST_CONFIG,
   RESET_TAMPER_FLAG,
   RECALIBRATE
-}
+};
 
 const static struct {
     COMMAND      val;
     const char *str;
-} conversion [] = {
+}conversion[] = {
     {HELP, "HELP"},
     {PIR_DETECTION_ON, "PIR_DETECTION_ON"},
     {PIR_DETECTION_OFF, "PIR_DETECTION_OFF"},
