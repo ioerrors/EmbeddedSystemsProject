@@ -1,4 +1,4 @@
-#include <ESP8266WiFi.h>
+h#include <ESP8266WiFi.h>
 
 /*
  * Supported Commands
@@ -122,58 +122,58 @@ byte processCommand(String command)
   byte change = 0;
   switch(command)
   {
-    case "HELP":
+    case HELP:
       printCommands();
       break;
-    case "PIR_DETECTION_ON":
+    case PIR_DETECTION_ON:
       changeVal = 68;
       change = 1;
       client.write(change);
       client.write(changeVal);
       break;
-    case "PIR_DETECTION_OFF":
+    case PIR_DETECTION_OFF:
       changeVal = 64;
       change = 1;
       client.write(change);
       client.write(changeVal);
       break;
-    case "DOOR_DETECTION_ON":
+    case DOOR_DETECTION_ON:
       changeVal = 34;
       change = 1;
       client.write(change);
       client.write(changeVal);
       break;
-    case "DOOR_DETECTION_OFF":
+    case DOOR_DETECTION_OFF:
       changeVal = 32;
       change = 1;
       client.write(change);
       client.write(changeVal);
       break;
-    case "TAMPER_DETECTION_ON":
+    case TAMPER_DETECTION_ON:
       changeVal = 17;
       change = 1;
       client.write(change);
       client.write(changeVal);
       break;
-    case "TAMPER_DETECTION_OFF":
+    case TAMPER_DETECTION_OFF:
       changeVal = 16;
       change = 1;
       client.write(change);
       client.write(changeVal);
       break;
-    case "PERIODIC_REPORTS_ON":
+    case PERIODIC_REPORTS_ON:
       changeVal = 136;
       change = 1;
       client.write(change);
       client.write(changeVal);
       break;
-    case "PERIODIC_REPORT_OFF":
+    case PERIODIC_REPORT_OFF:
       changeVal = 128;
       change = 1;
       client.write(change);
       client.write(changeVal);
       break;
-    case "SET_HERTZ":
+    case SET_HERTZ:
       byte hertz = 2;
       client.write(hertz);
       Serial.println("Input interval in ms:")
@@ -181,14 +181,14 @@ byte processCommand(String command)
       int interval = atoi(Serial.readString());
       client.write(interval);
       break;
-    case "REQUEST_DATA":
+    case REQUEST_DATA:
 
       break;
-    case "REQUEST_CONFIG":
+    case REQUEST_CONFIG:
       break;
-    case "RESET_TAMPER_FLAG":
+    case RESET_TAMPER_FLAG:
       break;
-    case "RECALIBRATE":
+    case RECALIBRATE:
       break;
 
     default:
