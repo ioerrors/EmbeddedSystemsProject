@@ -3,6 +3,8 @@
 #include <Adafruit_LSM303_Accel.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
+#include <string.h>
+#include <stdio.h>
 /*
  * Supported Commands
  * PIR_DETECTION_ON
@@ -28,8 +30,8 @@ enum COMMAND {
   DOOR_DETECTION_OFF,
   TAMPER_DETECTION_ON,
   TAMPER_DETECTION_OFF,
-  PERIODIC_DETECTION_ON,
-  PERIODIC_DETECTION_OFF,
+  PERIODIC_REPORT_ON,
+  PERIODIC_REPORT_OFF,
   SET_HERTZ,
   REQUEST_DATA,
   REQUEST_CONFIG,
@@ -48,8 +50,8 @@ const static struct {
     {DOOR_DETECTION_OFF, "DOOR_DETECTION_OFF"},
     {TAMPER_DETECTION_ON, "TAMPER_DETECTION_ON"},
     {TAMPER_DETECTION_OFF, "TAMPER_DETECTION_OFF"},
-    {PERIODIC_DETECTION_ON, "PERIODIC_DETECTION_ON"},
-    {PERIODIC_DETECTION_OFF, "PERIODIC_DETECTION_OFF"},
+    {PERIODIC_REPORT_ON, "PERIODIC_REPORT_ON"},
+    {PERIODIC_REPORT_OFF, "PERIODIC_REPORT_OFF"},
     {SET_HERTZ, "SET_HERTZ"},
     {REQUEST_DATA, "REQUEST_DATA"},
     {REQUEST_CONFIG, "REQUEST_CONFIG"},
@@ -109,7 +111,7 @@ void printCommands() {
   Serial.println("DOOR_DETECTION_OFF");
   Serial.println("TAMPER_DETECTION_ON");
   Serial.println("TAMPER_DETECTION_OFF");
-  Serial.println("PERIODIC_REPORTS_ON");
+  Serial.println("PERIODIC_REPORT_ON");
   Serial.println("PERIODIC_REPORT_OFF");
   Serial.println("SET_HERTZ");
   Serial.println("REQUEST_DATA");
@@ -153,14 +155,145 @@ void loop() {
     connectToServer();
   }
 }
-byte processCommand(String command)
+byte processCommand(String stringyCommand)
 {
-  const char* thing = command;
-  COMMAND thisOne = str2enum(thing)
+  char str_array[stringyCommand.length()];
+  stringyCommand.toCharArray(str_array, stringyCommand.length());
+  char* command = strtok(str_array, " ");
+  COMMAND thisOne = str2enum(command);
   byte packetSize = 0;
   byte changeVal = 0;
   byte change = 0;
   byte* message = 0;
+  byte hertz;
+  byte messageSize;
+  String input;
+
+
+  //what if no switch o_0
+  if(strcmp("HELP", command) == 0){
+    printCommands();
+  }
+  else if(strcmp("PIR_DETECTION_ON", command) == 0) {
+    changeVal = 68;
+    change = 1;
+    packetSize = 2;
+    client.write(packetSize);
+    client.write(change);
+    client.write(changeVal);
+  }
+  else if(strcmp("PIR_DETECTION_OFF", command) == 0) {
+    packetSize = 2;
+    client.write(packetSize);
+    changeVal = 64;
+    change = 1;
+    client.write(change);
+    client.write(changeVal);
+  }
+  else if(strcmp("DOOR_DETECTION_ON", command) == 0) {
+    packetSize = 2;
+    client.write(packetSize);
+    changeVal = 34;
+    change = 1;
+    client.write(change);
+    client.write(changeVal);
+  }
+  else if(strcmp("DOOR_DETECTION_OFF", command) == 0) {
+    packetSize = 2;
+    client.write(packetSize);
+    changeVal = 32;
+    change = 1;
+    client.write(change);
+    client.write(changeVal);
+  }
+  else if(strcmp("TAMPER_DETECTION_ON", command) == 0) {
+    packetSize = 2;
+    client.write(packetSize);
+    changeVal = 17;
+    change = 1;
+    client.write(change);
+    client.write(changeVal);
+  }
+  else if(strcmp("TAMPER_DETECTION_OFF", command) == 0) {
+    packetSize = 2;
+    client.write(packetSize);
+    changeVal = 16;
+    change = 1;
+    client.write(change);
+    client.write(changeVal);
+  }
+  else if(strcmp("PERIODIC_REPORT_ON", command) == 0) {
+    packetSize = 2;
+    client.write(packetSize);
+    changeVal = 136;
+    change = 1;
+    client.write(change);
+    client.write(changeVal);
+  }
+  else if(strcmp("PERIODIC_REPORT_OFF", command) == 0) {
+    packetSize = 2;
+    client.write(packetSize);
+    changeVal = 128;
+    change = 1;
+    client.write(change);
+    client.write(changeVal);
+  }
+  else if(strcmp("SET_HERTZ", command) == 0) {
+    packetSize = 3;
+    client.write(packetSize);
+    hertz = 2;
+    client.write(hertz);
+    Serial.println("Input interval in ms:");
+    while(!Serial.available());
+    unsignedShortBytes interval;
+    input = Serial.readString();
+    char thing_array[input.length()];
+    input.toCharArray(thing_array, input.length());
+    interval.shortVal = (unsigned short)atoi(thing_array);
+    for (int i = 0; i < 2; i++) {
+      client.write(interval.bytes[i]);
+    }
+  }
+  else if(strcmp("REQUEST_DATA", command) == 0) {
+    packetSize = 1;
+    client.write(packetSize);
+    change = 4;
+    client.write(change);
+    while(!client.available());
+    messageSize = client.read();
+    message = readMessage(messageSize);
+    processSensorData(message, messageSize);
+    free(message);
+  }
+  else if(strcmp("REQUEST_CONFIG", command) == 0) {
+    packetSize = 1;
+    client.write(packetSize);
+    change = 8;
+    client.write(change);
+    while(!client.available());
+    messageSize = client.read();
+    message = readMessage(messageSize);
+    processConfigData(message);
+    free(message);
+  }
+  else if(strcmp("RESET_TAMPER_FLAG", command) == 0) {
+    packetSize = 1;
+    client.write(packetSize);
+    change = 16;
+    client.write(change);
+  }
+  else if(strcmp("RECALIBRATE", command) == 0) {
+    packetSize = 1;
+    client.write(packetSize);
+    change = 32;
+    client.write(change);
+  }
+  else {
+    Serial.println("Unrecognized Command");
+  }
+}
+  
+  /*
   switch(thisOne)
   {
     case HELP:
@@ -214,7 +347,7 @@ byte processCommand(String command)
       client.write(change);
       client.write(changeVal);
       break;
-    case PERIODIC_REPORTS_ON:
+    case PERIODIC_REPORT_ON:
       packetSize = 2;
       client.write(packetSize);
       changeVal = 136;
@@ -233,13 +366,17 @@ byte processCommand(String command)
     case SET_HERTZ:
       packetSize = 3;
       client.write(packetSize);
-      byte hertz = 2;
+      hertz = 2;
       client.write(hertz);
-      Serial.println("Input interval in ms:")
+      Serial.println("Input interval in ms:");
       while(!Serial.available());
-      unsignedShortBytes interval.shortVal = (unsigned short)atoi(Serial.readString());
+      unsignedShortBytes interval;
+      input = Serial.readString();
+      char thing_array[input.length()];
+      input.toCharArray(thing_array, input.length());
+      interval.shortVal = (unsigned short)atoi(thing_array);
       for (int i = 0; i < 2; i++) {
-        client.write(interval.bytes[i])
+        client.write(interval.bytes[i]);
       }
       break;
     case REQUEST_DATA:
@@ -247,9 +384,8 @@ byte processCommand(String command)
       client.write(packetSize);
       change = 4;
       client.write(change);
-      while(!client.available);
-      byte messageSize = client.read();
-      Serial.println(messageSize);
+      while(!client.available());
+      messageSize = client.read();
       message = readMessage(messageSize);
       processSensorData(message, messageSize);
       free(message);
@@ -259,11 +395,10 @@ byte processCommand(String command)
       client.write(packetSize);
       change = 8;
       client.write(change);
-      while(!client.available);
-      byte messageSize = client.read();
-      Serial.println(messageSize);
+      while(!client.available());
+      messageSize = client.read();
       message = readMessage(messageSize);
-      processConfigData(message, messageSize);
+      processConfigData(message);
       free(message);
       break;
     case RESET_TAMPER_FLAG:
@@ -281,7 +416,7 @@ byte processCommand(String command)
     default:
       Serial.println("Unrecognized Command");
   }
-}
+  */
 
 
 
