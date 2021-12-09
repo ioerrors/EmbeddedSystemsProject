@@ -1,4 +1,4 @@
-//#include <ESP8266WiFi.h>
+#include <ESP8266WiFi.h>
 #include <SoftwareSerial.h>
 #include <Adafruit_LSM303_Accel.h>
 #include <Adafruit_Sensor.h>
@@ -20,7 +20,7 @@
  * RECALIBRATE
  * HELP
  */
-enum COMMAND{
+enum COMMAND {
   HELP,
   PIR_DETECTION_ON,
   PIR_DETECTION_OFF,
@@ -57,7 +57,7 @@ const static struct {
     {RECALIBRATE, "RECALIBRATE"}
 };
 
-COMMAND  str2enum (const char *str)
+COMMAND  str2enum (const char* str)
 {
    int j;
    for (j = 0;  j < sizeof (conversion) / sizeof (conversion[0]);  ++j)
@@ -155,7 +155,8 @@ void loop() {
 }
 byte processCommand(String command)
 {
-  Command thisOne = str2enum(command)
+  const char* thing = command;
+  COMMAND thisOne = str2enum(thing)
   byte packetSize = 0;
   byte changeVal = 0;
   byte change = 0;
@@ -306,7 +307,7 @@ void processSensorData(byte* message, byte messageSize)
   if(message[0] < 128) {
     Serial.println("On Demand Report:");
   } else {
-    Serial.println("Periodic Report:")
+    Serial.println("Periodic Report:");
   }
   if (!ultra) {
     Serial.println("Ultrasonic sensor off.");
@@ -348,24 +349,24 @@ void processConfigData(byte* message) {
   if (message[0] % 2 == 0) {
     Serial.println("Tamper Detection set to off.");
   } else {
-    Serial.println("Tamper Detection set to on.")
+    Serial.println("Tamper Detection set to on.");
   }
   message[0]>>1;
   if (message[0] % 2 == 0) {
     Serial.println("Door sensor set to off.");
   } else {
-    Serial.println("Door sensor set to on.")
+    Serial.println("Door sensor set to on.");
   }
   message[0]>>1;
   if (message[0] % 2 == 0) {
     Serial.println("PIR sensor set to off.");
   } else {
-    Serial.println("PIR sensor set to on.")
+    Serial.println("PIR sensor set to on.");
   }
   message[0]>>1;
   if (message[0] % 2 == 0) {
     Serial.println("Periodic reports set to off.");
   } else {
-    Serial.println("Periodic reports set to on.")
+    Serial.println("Periodic reports set to on.");
   }  
 }
