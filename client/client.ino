@@ -147,7 +147,7 @@ void loop() {
     if(Serial.available())
     {
       String command = Serial.readString();
-      byte commandByte = processCommand(command);
+      processCommand(command);
     }
   }
   else
@@ -155,7 +155,7 @@ void loop() {
     connectToServer();
   }
 }
-byte processCommand(String stringyCommand)
+void processCommand(String stringyCommand)
 {
   char str_array[stringyCommand.length()];
   stringyCommand.toCharArray(str_array, stringyCommand.length());
@@ -292,131 +292,6 @@ byte processCommand(String stringyCommand)
     Serial.println("Unrecognized Command");
   }
 }
-  
-  /*
-  switch(thisOne)
-  {
-    case HELP:
-      printCommands();
-      break;
-    case PIR_DETECTION_ON:
-      changeVal = 68;
-      change = 1;
-      packetSize = 2;
-      client.write(packetSize);
-      client.write(change);
-      client.write(changeVal);
-      break;
-    case PIR_DETECTION_OFF:
-      packetSize = 2;
-      client.write(packetSize);
-      changeVal = 64;
-      change = 1;
-      client.write(change);
-      client.write(changeVal);
-      break;
-    case DOOR_DETECTION_ON:
-      packetSize = 2;
-      client.write(packetSize);
-      changeVal = 34;
-      change = 1;
-      client.write(change);
-      client.write(changeVal);
-      break;
-    case DOOR_DETECTION_OFF:
-      packetSize = 2;
-      client.write(packetSize);
-      changeVal = 32;
-      change = 1;
-      client.write(change);
-      client.write(changeVal);
-      break;
-    case TAMPER_DETECTION_ON:
-      packetSize = 2;
-      client.write(packetSize);
-      changeVal = 17;
-      change = 1;
-      client.write(change);
-      client.write(changeVal);
-      break;
-    case TAMPER_DETECTION_OFF:
-      packetSize = 2;
-      client.write(packetSize);
-      changeVal = 16;
-      change = 1;
-      client.write(change);
-      client.write(changeVal);
-      break;
-    case PERIODIC_REPORT_ON:
-      packetSize = 2;
-      client.write(packetSize);
-      changeVal = 136;
-      change = 1;
-      client.write(change);
-      client.write(changeVal);
-      break;
-    case PERIODIC_REPORT_OFF:
-      packetSize = 2;
-      client.write(packetSize);
-      changeVal = 128;
-      change = 1;
-      client.write(change);
-      client.write(changeVal);
-      break;
-    case SET_HERTZ:
-      packetSize = 3;
-      client.write(packetSize);
-      hertz = 2;
-      client.write(hertz);
-      Serial.println("Input interval in ms:");
-      while(!Serial.available());
-      unsignedShortBytes interval;
-      input = Serial.readString();
-      char thing_array[input.length()];
-      input.toCharArray(thing_array, input.length());
-      interval.shortVal = (unsigned short)atoi(thing_array);
-      for (int i = 0; i < 2; i++) {
-        client.write(interval.bytes[i]);
-      }
-      break;
-    case REQUEST_DATA:
-      packetSize = 1;
-      client.write(packetSize);
-      change = 4;
-      client.write(change);
-      while(!client.available());
-      messageSize = client.read();
-      message = readMessage(messageSize);
-      processSensorData(message, messageSize);
-      free(message);
-      break;
-    case REQUEST_CONFIG:
-      packetSize = 1;
-      client.write(packetSize);
-      change = 8;
-      client.write(change);
-      while(!client.available());
-      messageSize = client.read();
-      message = readMessage(messageSize);
-      processConfigData(message);
-      free(message);
-      break;
-    case RESET_TAMPER_FLAG:
-      packetSize = 1;
-      client.write(packetSize);
-      change = 16;
-      client.write(change);
-      break;
-    case RECALIBRATE:
-      packetSize = 1;
-      client.write(packetSize);
-      change = 32;
-      client.write(change);
-      break;
-    default:
-      Serial.println("Unrecognized Command");
-  }
-  */
 
 
 
@@ -469,9 +344,9 @@ void processSensorData(byte* message, byte messageSize)
   for(int I = 1; I < messageSize; I++)
   {
     if (message[0] >= 128 && I == 2) {
-      Serial.print("Ultrasonic Distance");
+      Serial.print("Ultrasonic Distance ");
       Serial.print(message[I]);
-      Serial.print(" cm");
+      Serial.println(" cm ");
     } else {
       Serial.print(message[I]);
     }
