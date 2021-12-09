@@ -1,5 +1,38 @@
 #include <ESP8266WiFi.h>
 
+/*
+ * Supported Commands
+ * PIR_DETECTION_ON
+ * PIR_DETECTION_OFF
+ * DOOR_DETECTION_ON
+ * DOOR_DETECTION_OFF
+ * TAMPER_DETECTION_ON
+ * TAMPER_DETECTION_OFF
+ * PERIODIC_REPORTS_ON
+ * PERIODIC_REPORT_OFF
+ * SET_HERTZ
+ * REQUEST_DATA
+ * REQUEST_CONFIG
+ * RESET_TAMPER_FLAG
+ * RECALIBRATE
+ * HELP
+ */
+enum COMMANDS{
+  HELP = 0,
+  PIR_DETECTION_ON = 1,
+  PIR_DETECTION_OFF = 2,
+  DOOR_DETECTION_ON = 3,
+  DOOR_DETECTION_OFF = 4,
+  TAMPER_DETECTION_ON = 5,
+  TAMPER_DETECTION_OFF = 6,
+  PERIODIC_DETECTION_ON = 7,
+  PERIODIC_DETECTION_OFF = 8,
+  SET_HERTZ = 9,
+  REQUEST_DATA = 10,
+  REQUEST_CONFIG = 11,
+  RESET_TAMPER_FLAG = 12,
+  RECALIBRATE = 13
+}
 const byte MAX_PACKET_SIZE = 6;
 const short CLIENT_WAIT = 100;
 const char *WIFI_SSID = "SensorHub";
@@ -82,75 +115,61 @@ void loop() {
     connectToServer();
   }
 }
-/*
- * Supported Commands
- * PIR_DETECTION_ON
- * PIR_DETECTION_OFF
- * DOOR_DETECTION_ON
- * DOOR_DETECTION_OFF
- * TAMPER_DETECTION_ON
- * TAMPER_DETECTION_OFF
- * PERIODIC_REPORTS_ON
- * PERIODIC_REPORT_OFF
- * SET_HERTZ
- * REQUEST_DATA
- * REQUEST_CONFIG
- * RESET_TAMPER_FLAG
- * RECALIBRATE
- * HELP
- */
 byte processCommand(String command)
 {
+  byte packetSize = 0;
+  byte changeVal = 0;
+  byte change = 0;
   switch(command)
   {
     case "HELP":
       printCommands();
       break;
     case "PIR_DETECTION_ON":
-      byte changeVal = 68;
-      byte change = 1;
+      changeVal = 68;
+      change = 1;
       client.write(change);
       client.write(changeVal);
       break;
     case "PIR_DETECTION_OFF":
-      byte changeVal = 64;
-      byte change = 1;
+      changeVal = 64;
+      change = 1;
       client.write(change);
       client.write(changeVal);
       break;
     case "DOOR_DETECTION_ON":
-      byte changeVal = 34;
-      byte change = 1;
+      changeVal = 34;
+      change = 1;
       client.write(change);
       client.write(changeVal);
       break;
     case "DOOR_DETECTION_OFF":
-      byte changeVal = 32;
-      byte change = 1;
+      changeVal = 32;
+      change = 1;
       client.write(change);
       client.write(changeVal);
       break;
     case "TAMPER_DETECTION_ON":
-      byte changeVal = 17;
-      byte change = 1;
+      changeVal = 17;
+      change = 1;
       client.write(change);
       client.write(changeVal);
       break;
     case "TAMPER_DETECTION_OFF":
-      byte changeVal = 16;
-      byte change = 1;
+      changeVal = 16;
+      change = 1;
       client.write(change);
       client.write(changeVal);
       break;
     case "PERIODIC_REPORTS_ON":
-      byte changeVal = 136;
-      byte change = 1;
+      changeVal = 136;
+      change = 1;
       client.write(change);
       client.write(changeVal);
       break;
     case "PERIODIC_REPORT_OFF":
-      byte changeVal = 128;
-      byte change = 1;
+      changeVal = 128;
+      change = 1;
       client.write(change);
       client.write(changeVal);
       break;
@@ -174,6 +193,14 @@ byte processCommand(String command)
 
     default:
       Serial.println("Unrecognized Command");
+  }
+  if(packet != NULL)
+  {
+    for(int I = 0; I < packetSize; I++)
+    {
+      client.write(changeVal);
+    }
+    free(packet);
   }
 }
 byte* readMessage(byte messageSize)

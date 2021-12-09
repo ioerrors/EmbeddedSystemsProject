@@ -60,7 +60,14 @@ void loop()
       {
         while(client.available() > 0)
         {
-          softSerial.write(client.read());
+          byte packetSize = client.read();
+          while(client.available() != packetSize);
+          byte* packet = (byte*) malloc(packetSize);
+          for(int I = 0; I < packetSize; I++)
+          {
+            packet[I] = client.read();
+          }
+          softSerial.write(packet, packetSize);
         }
       }
     }
