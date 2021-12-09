@@ -163,13 +163,12 @@ bool checkAccelerometer()
 }
 
 void loop() {
-
   // --------------------------------------------
   // PERIODIC REPORT:
   // & system's behavior meaningfully changes
   // according to the collected sensor data
    if (millis() - startTime > periodicLength.shortVal &&
-   configurationByte&PERIODIC_BYTE_VALUE == PERIODIC_BYTE_VALUE) {
+      configurationByte&PERIODIC_BYTE_VALUE == PERIODIC_BYTE_VALUE) {
     readSensorData();
     messageCount.longVal ++;
     byte* packet = createPacket(true);
@@ -178,12 +177,10 @@ void loop() {
     packet = NULL;
     startTime = millis();
   } 
-  if(Serial2.available())
-  {
+  if(Serial2.available()) {
     Serial.println("Serial input");
     byte commandByte = Serial2.read();
-    switch(commandByte)
-    {
+    switch(commandByte) {
       case CHANGE_VALUE:
         byte configRequestByte = Serial2.read();
         processNewConfigByte(configRequestByte);
@@ -219,7 +216,7 @@ void loop() {
         break;
       case RESET_TAMPER_FLAG:
         tampered = false;
-        Serial2.write(
+        //Serial2.write(
         break;
       case RECALIBRATE:
         calibrateAccelerometer();
@@ -229,6 +226,7 @@ void loop() {
     }
   }
 }
+
 void processNewConfigByte(byte newConfigByte)
 {
   byte SHOULD_CHANGE_DOOR = newConfigByte & CHANGE_DOOR_VALUE;
