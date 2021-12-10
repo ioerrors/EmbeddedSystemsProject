@@ -77,6 +77,7 @@ const byte DOOR_PIN = 4;
 
 //other consts
 const byte MESSAGE_COUNT_OFFSET = 32;
+const byte MESSAGE_COUNTER_OFFSET = 1;
 const byte DISTANCE_THRESHOLD_CM = 511;
 
 unsignedShortBytes periodicLength; // 1 Hz
@@ -129,7 +130,7 @@ void setup()
 
   //Set start time
   startTime = millis();
-  configurationByte = 15;
+  configurationByte = 7;
   packetSize = 0;
   messageCount.longVal = 0;
   handlingRequest=false;
@@ -163,72 +164,104 @@ bool checkAccelerometer()
 }
 
 void loop() {
-
   // --------------------------------------------
   // PERIODIC REPORT:
   // & system's behavior meaningfully changes
   // according to the collected sensor data
-   if (millis() - startTime > periodicLength.shortVal &&
-   configurationByte&PERIODIC_BYTE_VALUE == PERIODIC_BYTE_VALUE) {
+  if (millis() - startTime > periodicLength.shortVal &&
+      (configurationByte & PERIODIC_BYTE_VALUE) == PERIODIC_BYTE_VALUE) {
     readSensorData();
-    messageCount.longVal ++;
+    messageCount.longVal += MESSAGE_COUNTER_OFFSET;
     byte* packet = createPacket(true);
-    Serial2.write(packet, packetSize);
+    Serial2.write(packetSize);
+    for(int I = 0; I < packetSize; I++)
+    {
+      Serial.print(packet[I]);
+      Serial.print(" ");
+      Serial2.write(packet[I]);
+    }
     free(packet);
     packet = NULL;
     startTime = millis();
   } 
-  if(Serial2.available())
+  if(Serial2.available()) 
   {
-    Serial.println("Serial input");
-    byte commandByte = Serial2.read();
-    switch(commandByte)
+    delay(10);
+    packetSize = Serial2.available();
+    byte* packet = malloc(packetSize);
+    Serial2.readBytes(packet, packetSize);
+    byte commandByte = packet[0];
+    if(commandByte == CHANGE_VALUE)
     {
-      case CHANGE_VALUE:
-        byte configRequestByte = Serial2.read();
-        processNewConfigByte(configRequestByte);
-        break;
-      case SET_HERTZ:
-        byte hertzValue[SET_HERTZ];
-        for(int I = 0; I < SET_HERTZ; I++)
-        {
-          hertzValue[I] = Serial2.read();
-        }
-        unsignedShortBytes newValue;
-        for(int I = 0; I < sizeof(unsigned short); I++)
-        {
-          newValue.bytes[I] = hertzValue[I];
-        }
-        if(newValue.shortVal >= PERIODIC_LOWER_LIMIT && newValue.shortVal <= PERIODIC_UPPER_LIMIT)
-        {
-          periodicLength.shortVal = newValue.shortVal;
-        }
+      Serial.println("Changing values");
+      byte configRequestByte = packet[1];
+      processNewConfigByte(configRequestByte);
+    }
+    else if(commandByte == SET_HERTZ)
+    {
+      Serial.println("Setting hertz");
+      unsignedShortBytes newValue;
+      newValue.shortVal = 0;
+      Serial.println(Serial2.available());
+      for(int I = 0; I < sizeof(unsigned short); I++)
+      {
+        newValue.bytes[I] = packet[I+1];
+      }
+      Serial.println(newValue.shortVal);
+      if(newValue.shortVal >= PERIODIC_LOWER_LIMIT && newValue.shortVal <= PERIODIC_UPPER_LIMIT)
+      {
+        periodicLength.shortVal = newValue.shortVal;
         Serial.print("New periodic value: ");
         Serial.println(periodicLength.shortVal);
-        break;
-      case REQUEST_DATA:
-        readSensorData();
-        messageCount.longVal ++;
-        byte* packet = createPacket(false);
-        Serial2.write(packet, packetSize);
-        free(packet);
-        packet = NULL;
-        break;
-      case CONFIG_BYTE_REQUEST:
-        Serial2.write(configurationByte);
-        break;
-      case RESET_TAMPER_FLAG:
-        tampered = false;
-        Serial2.write(
-        break;
-      case RECALIBRATE:
-        calibrateAccelerometer();
-        break;
-      default:
-        break;
+      }
+      else
+      {
+        Serial.println("Requested value is out of range");
+      }
     }
+    else if(commandByte == REQUEST_DATA)
+    {
+      Serial.println("requesting on demand data");
+      readSensorData();
+      messageCount.longVal += MESSAGE_COUNTER_OFFSET;
+      byte* packet = createPacket(false);
+      Serial2.write(packetSize);
+      for(int I = 0; I < packetSize; I++)
+      {
+        Serial.print(packet[I]);
+        Serial.print(" ");
+        Serial2.write(packet[I]);
+      }
+      free(packet);
+      packet = NULL;
+    }
+    else if(commandByte == CONFIG_BYTE_REQUEST)
+    {
+      Serial.println("Request for config");
+      Serial.println(configurationByte);
+      Serial2.write((byte) 1);
+      Serial2.write(configurationByte);
+    }
+    else if(commandByte == RESET_TAMPER_FLAG)
+    {
+      Serial.println("Reset tamper flag");
+      tampered = false;
+    }
+    else if(commandByte == RECALIBRATE)
+    {
+      Serial.println("Calibrating accelerometer");
+      calibrateAccelerometer();
+    }
+    else
+    {
+      Serial.print("Command byte ");
+      Serial.print(commandByte);
+      Serial.println(" did not have a command");
+    }
+    free(packet);
   }
 }
+
 void processNewConfigByte(byte newConfigByte)
 {
   byte SHOULD_CHANGE_DOOR = newConfigByte & CHANGE_DOOR_VALUE;
@@ -237,50 +270,54 @@ void processNewConfigByte(byte newConfigByte)
   byte SHOULD_CHANGE_PERIODIC = newConfigByte & CHANGE_PERIODIC_VALUE;
   if(SHOULD_CHANGE_DOOR == CHANGE_DOOR_VALUE)
   {
-    if((configurationByte & DOOR_BYTE_VALUE == DOOR_BYTE_VALUE)
-      && (newConfigByte & DOOR_BYTE_VALUE == 0))
+    Serial.println("changing Door Value");
+    if(((configurationByte & DOOR_BYTE_VALUE) == DOOR_BYTE_VALUE)
+      && ((newConfigByte & DOOR_BYTE_VALUE) == 0))
     {
       configurationByte = configurationByte & (255-DOOR_BYTE_VALUE);
     }
     else
     {
-      configurationByte = configurationByte | newConfigByte;
+      configurationByte = configurationByte | (newConfigByte & DOOR_BYTE_VALUE);
     }
   }
   if(SHOULD_CHANGE_PIR == CHANGE_PIR_VALUE)
   {
-    if((configurationByte & PIR_BYTE_VALUE == PIR_BYTE_VALUE)
-      && (newConfigByte & PIR_BYTE_VALUE == 0))
+    Serial.println("changing PIR Value");
+    if(((configurationByte & PIR_BYTE_VALUE) == PIR_BYTE_VALUE)
+      && ((newConfigByte & PIR_BYTE_VALUE) == 0))
     {
       configurationByte = configurationByte & (255-PIR_BYTE_VALUE);
     }
     else
     {
-      configurationByte = configurationByte | newConfigByte;
+      configurationByte = configurationByte | (newConfigByte & PIR_BYTE_VALUE);
     }
   }
   if(SHOULD_CHANGE_TAMPER == CHANGE_TAMPER_VALUE)
   {
-    if((configurationByte & TAMPER_BYTE_VALUE == TAMPER_BYTE_VALUE)
-      && (newConfigByte & TAMPER_BYTE_VALUE == 0))
+    Serial.println("changing Tamper Value");
+    if(((configurationByte & TAMPER_BYTE_VALUE) == TAMPER_BYTE_VALUE)
+      && ((newConfigByte & TAMPER_BYTE_VALUE) == 0))
     {
       configurationByte = configurationByte & (255-TAMPER_BYTE_VALUE);
     }
     else
     {
-      configurationByte = configurationByte | newConfigByte;
+      configurationByte = configurationByte | (newConfigByte & TAMPER_BYTE_VALUE);
     }
   }
   if(SHOULD_CHANGE_PERIODIC == CHANGE_PERIODIC_VALUE)
   {
-    if((configurationByte & PERIODIC_BYTE_VALUE == PERIODIC_BYTE_VALUE)
-      && (newConfigByte & PERIODIC_BYTE_VALUE == 0))
+    Serial.println("changing Periodic Value");
+    if(((configurationByte & PERIODIC_BYTE_VALUE) == PERIODIC_BYTE_VALUE)
+      && ((newConfigByte & PERIODIC_BYTE_VALUE) == 0))
     {
       configurationByte = configurationByte & (255-PERIODIC_BYTE_VALUE);
     }
     else
     {
-      configurationByte = configurationByte | newConfigByte;
+      configurationByte = configurationByte | (newConfigByte & PERIODIC_BYTE_VALUE);
     }
   }
 }
@@ -301,7 +338,10 @@ void readSensorData() {
   byte checkPIR = configurationByte & PIR_BYTE_VALUE;
   byte checkDoor = configurationByte & DOOR_BYTE_VALUE;
   if (checkTamper == TAMPER_BYTE_VALUE) {
-    tampered = checkAccelerometer();
+    if(!tampered)
+    {
+      tampered = checkAccelerometer();
+    }
   }
   else
   {
@@ -353,12 +393,20 @@ byte* createPacket(boolean periodic)
     }
   }
   int messageCounterSize = 1;
-  if(messageCount.longVal >= pow(2,8)) //if it is over 2^8, needs another byte
+  for(int I = 0; I < sizeof(unsigned long)-1; I++)
+  {
+    if(messageCount.bytes[I] == 255)
+    {
+      messageCount.bytes[I] = 0;
+      messageCount.bytes[I+1] ++;
+    }
+  }
+  if(messageCount.longVal >= pow(2,8)-1) //if it is over 2^8, needs another byte
   {
     messageCounterSize ++;
   }
-  if(messageCount.longVal >= pow(2,16)) //if it is over 2^16, needs another byte
-  { 
+  if(messageCount.longVal >= pow(2,16)-1) //if it is over 2^16, needs another byte
+  {
     messageCounterSize ++;
   }
   if(messageCount.longVal >= pow(2,24))//if it is over 2^24, hit the max message count, roll back to 0
